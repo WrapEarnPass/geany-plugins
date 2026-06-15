@@ -670,7 +670,6 @@ static void popup_menu_on_new_directory(G_GNUC_UNUSED GtkMenuItem *menuitem, G_G
 /* Handle popup menu Rename */
 static void popup_menu_on_rename(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data)
 {
-gboolean remove_it, dir, removed_any = FALSE;
 	gchar *path = NULL, *abs_path = NULL;
 	SIDEBAR_CONTEXT context;
 
@@ -681,19 +680,16 @@ gboolean remove_it, dir, removed_any = FALSE;
 		{
 			path=g_path_get_dirname(context.file);
 			abs_path = g_strdup(context.file);
-			dir = FALSE;
 		}
 		else if (context.subdir != NULL)
 		{
 			path = g_path_get_dirname(context.subdir);
 			abs_path = g_strdup(context.subdir);
-			dir = TRUE;
 		}
 		else if (context.directory != NULL)
 		{
-			path = g_path_get_dirname(context.directory);
-			abs_path = g_strdup(context.directory);
-			dir = TRUE;
+			path = wb_project_dir_get_base_dir(context.directory);
+			abs_path = get_combined_path(wb_project_get_filename(context.project), path);
 		}
 	}
 
@@ -712,9 +708,13 @@ gboolean remove_it, dir, removed_any = FALSE;
 		gchar *newpath = g_build_path(G_DIR_SEPARATOR_S, path, newname, NULL);
 		if (rename_file_or_dir(abs_path, newpath))
 		{
-			//grab the new file/dir
-			wb_project_dir_rescan(context.project, context.directory);
-			sidebar_update(SIDEBAR_CONTEXT_DIRECTORY_RESCANNED, &context);
+			if (workbench_get_enable_live_update(wb_globals.opened_wb) == FALSE)
+			{
+				/* Live update is disabled. We need to update the file list and
+					 the sidebar manually. */
+				wb_project_dir_rescan(context.project, context.directory);
+				sidebar_update(SIDEBAR_CONTEXT_DIRECTORY_RESCANNED, &context);
+			}
 		}
 		else
 		{
@@ -857,7 +857,7 @@ static void popup_menu_on_remove_file_or_dir(G_GNUC_UNUSED GtkMenuItem *menuitem
 		}
 
 		/* If anything was removed update the filelist and sidebar. */
-		if (removed_any)
+		if (removed_any && workbench_get_enable_live_update(wb_globals.opened_wb) == FALSE)
 		{
 			wb_project_dir_rescan(context.project, context.directory);
 			sidebar_update(SIDEBAR_CONTEXT_DIRECTORY_RESCANNED, &context);
