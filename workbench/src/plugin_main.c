@@ -46,7 +46,7 @@ GeanyPlugin *geany_plugin;
 GeanyData *geany_data;
 
 /* Callback function for document open */
-static void plugin_workbench_on_doc_open(G_GNUC_UNUSED GObject * obj, G_GNUC_UNUSED GeanyDocument * doc,
+static void plugin_workbench_on_doc_open(G_GNUC_UNUSED GObject * obj, GeanyDocument * doc,
 										 G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL && doc->file_name != NULL);
