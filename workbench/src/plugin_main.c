@@ -26,6 +26,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <git2.h>
+#include <utils.h>
 
 #include <wb_globals.h>
 
