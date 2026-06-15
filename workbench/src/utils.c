@@ -293,7 +293,11 @@ void close_all_files_in_list(GPtrArray *list)
 	}
 }
 
-
+/** Check if a  given path has a .git
+ *
+ * @param path gchar* containing a directory path.
+ *
+ **/
 gboolean is_git_repository(gchar *path)
 {
 	gboolean is_git_repo;
@@ -304,4 +308,24 @@ gboolean is_git_repository(gchar *path)
 	g_free(git_path);
 
 	return is_git_repo;
+}
+
+/** Helper function to assemble a gtk_image_menu, auto sets show.
+ *
+ * @param icon_name gchar* containing an icon name.
+ * @param label gchar* with the label to use (supports mnemonic).
+ *
+ **/
+GtkWidget *menu_item_new(const gchar *icon_name, const gchar *label)
+{
+	GtkWidget *item = gtk_image_menu_item_new_with_mnemonic(label);
+
+	if (icon_name != NULL)
+	{
+		GtkWidget *image = gtk_image_new_from_icon_name(icon_name, GTK_ICON_SIZE_MENU);
+		gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item), image);
+		gtk_widget_show(image);
+	}
+	gtk_widget_show(item);
+	return item;
 }
