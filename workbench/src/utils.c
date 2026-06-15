@@ -310,6 +310,7 @@ gboolean is_git_repository(gchar *path)
 	return is_git_repo;
 }
 
+
 /** Helper function to assemble a gtk_image_menu, auto sets show.
  *
  * @param icon_name gchar* containing an icon name.
@@ -328,4 +329,33 @@ GtkWidget *menu_item_new(const gchar *icon_name, const gchar *label)
 	}
 	gtk_widget_show(item);
 	return item;
+}
+
+
+/** Helper function to rename a file/directory
+ *
+ * @param utf8_oldname gchar* existing GeanyDoc path, or raw file, directory path
+ * @param utf8_newname gchar* target new name
+ *
+ **/
+gboolean rename_file_or_dir(gchar *utf8_oldname, gchar *utf8_newname)
+{
+	GeanyDocument *doc = document_find_by_filename(utf8_oldname);
+	if (doc)
+		/* This is a geany doc, and per 
+		https://www.geany.org/manual/reference/document_8h.html#a7b93bc4d0551af19c8852df52f9c126c
+		both functions have to be called to update geany's model */
+		document_rename_file(document, utf8_newname);
+		return document_save_file_as(document, utf8_newname);
+	else
+	{
+		/* this request is for a non-opened doc or directory.
+		use the g_rename os wrapper */
+		gchar *oldname = utils_get_locale_from_utf8(utf8_oldname);
+		gchar *newname = utils_get_locale_from_utf8(utf8_newname);
+		gint res = g_rename(oldname, newname);
+		g_free(oldname);
+		g_free(newname);
+		return res == 0;
+	}
 }
