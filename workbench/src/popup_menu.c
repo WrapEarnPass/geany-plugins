@@ -673,7 +673,6 @@ static void popup_menu_on_rename(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNU
 gboolean remove_it, dir, removed_any = FALSE;
 	gchar *path = NULL, *abs_path = NULL;
 	SIDEBAR_CONTEXT context;
-	GPtrArray *files;
 
 	/* Check if a file, a sub-dir or a directory is selected. */
 	if (sidebar_file_view_get_selected_context(&context))
@@ -686,16 +685,14 @@ gboolean remove_it, dir, removed_any = FALSE;
 		}
 		else if (context.subdir != NULL)
 		{
-			path = g_strdup(context.subdir);
-			abs_path = g_strdup(path);
-			files = sidebar_get_selected_subdir_filelist(TRUE);
+			path = g_path_get_dirname(context.subdir);
+			abs_path = g_strdup(context.subdir);
 			dir = TRUE;
 		}
 		else if (context.directory != NULL)
 		{
-			path = wb_project_dir_get_base_dir(context.directory);
-			abs_path = get_combined_path(wb_project_get_filename(context.project), path);
-			files = sidebar_get_selected_directory_filelist(TRUE);
+			path = g_path_get_dirname(context.directory);
+			abs_path = g_strdup(context.directory);
 			dir = TRUE;
 		}
 	}
@@ -707,7 +704,7 @@ gboolean remove_it, dir, removed_any = FALSE;
 	}
 
 	gchar *base_name = g_path_get_basename(abs_path);
-	gchar *newname = dialogs_show_input(_("Rename"), GTK_WINDOW(geany->main_widgets->window),
+	gchar *newname = dialogs_show_input(_("Rename"), GTK_WINDOW(wb_globals.geany_plugin->geany_data->main_widgets->window),
 			_("New name:"), base_name);
 	g_free(base_name);
 	if (newname != NULL)
@@ -722,7 +719,7 @@ gboolean remove_it, dir, removed_any = FALSE;
 		else
 		{
 			dialogs_show_msgbox(GTK_MESSAGE_ERROR, _("Cannot rename '%s' to '%s'."), 
-			oldpath, newpath);
+			abs_path, newpath);
 		}
 		g_free(newpath);
 		g_free(newname);
