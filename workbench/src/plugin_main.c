@@ -116,7 +116,7 @@ static void plugin_workbench_help (G_GNUC_UNUSED GeanyPlugin *plugin, G_GNUC_UNU
 
 
 /* Load workbench from project */
-static void plugin_workbench_on_project_open(GObject* obj, GKeyFile* config, gpointer user_data) {
+static void plugin_workbench_on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
 	//if the project has a workbench, and one isn't loaded, load the workbench
 	if(wb_globals.opened_wb == NULL){
 		//no workbench
@@ -141,7 +141,7 @@ static void plugin_workbench_on_project_open(GObject* obj, GKeyFile* config, gpo
 }
 
 /* Attach workbench to project */
-static void plugin_workbench_on_project_save(GObject* obj, GKeyFile* config, gpointer user_data) {
+static void plugin_workbench_on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
 	//if the project doesn't have a workbench, but one is loaded, set the workbench
 	if(wb_globals.opened_wb != NULL){
 		//we have a workbench
