@@ -1042,6 +1042,7 @@ static void sidebar_filew_view_on_row_activated (GtkTreeView *treeview,
 	}
 }
 
+
 /* Callback function for button release, used for the popup menu */
 static gboolean sidebar_file_view_on_button_release(G_GNUC_UNUSED GtkWidget * widget, GdkEventButton * event,
 		G_GNUC_UNUSED gpointer user_data)
@@ -1425,6 +1426,7 @@ void sidebar_init(void)
 
 	sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(sidebar.file_view));
 	gtk_tree_selection_set_mode(sel, GTK_SELECTION_SINGLE);
+
 	g_signal_connect(G_OBJECT(sidebar.file_view), "button-release-event",
 			G_CALLBACK(sidebar_file_view_on_button_release), NULL);
 
