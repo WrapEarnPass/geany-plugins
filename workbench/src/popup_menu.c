@@ -25,6 +25,7 @@
 #include <string.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <gtk/gtk.h>
 
 #ifdef HAVE_CONFIG_H
 	#include "config.h"
@@ -35,11 +36,14 @@
 #include "sidebar.h"
 #include "popup_menu.h"
 #include "utils.h"
+#include "menu.h"
 
 static struct
 {
 	GtkWidget *widget;
 
+	GtkWidget *new_workbench;
+	GtkWidget *open_workbench;
 	GtkWidget *add_project;
 	GtkWidget *remove_project;
 	GtkWidget *fold_unfold_project;
@@ -76,8 +80,54 @@ static struct
  **/
 void popup_menu_show(POPUP_CONTEXT context, GdkEventButton *event)
 {
+	if(context == POPUP_CONTEXT_NOPROJECT){
+		//hide everything
+		GList *children = gtk_container_get_children(GTK_CONTAINER(s_popup_menu.widget));
+		g_list_foreach(children, (GFunc)gtk_widget_hide, NULL);
+		g_free(children);
+		//show Project New
+		gtk_widget_show( s_popup_menu.new_workbench);
+		gtk_widget_set_sensitive( s_popup_menu.new_workbench, TRUE);
+		//show Project Open
+		gtk_widget_show( s_popup_menu.open_workbench);
+		gtk_widget_set_sensitive( s_popup_menu.open_workbench, TRUE);
+	}else{
+		// !that
+		//show everything
+		gtk_widget_show_all(GTK_WIDGET(s_popup_menu.widget));
+		//hide Project New
+		gtk_widget_hide( s_popup_menu.new_workbench);
+		gtk_widget_set_sensitive( s_popup_menu.new_workbench, FALSE);
+		//hide Project open
+		gtk_widget_set_sensitive( s_popup_menu.open_workbench, FALSE);
+		gtk_widget_hide( s_popup_menu.open_workbench);
+	}
+
 	switch (context)
 	{
+		case POPUP_CONTEXT_NOPROJECT:
+			//these should all be hidden already, but follow form
+			gtk_widget_set_sensitive (s_popup_menu.add_project, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.remove_project, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.fold_unfold_project, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.project_open_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.project_close_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.add_directory, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.remove_directory, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.rescan_directory, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.directory_settings, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.fold_unfold_directory, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.directory_open_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.directory_close_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.add_wb_bookmark, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.add_prj_bookmark, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.remove_bookmark, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.subdir_open_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.subdir_close_all, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.new_file, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.new_directory, FALSE);
+			gtk_widget_set_sensitive (s_popup_menu.remove_file_or_dir, FALSE);
+		break;
 		case POPUP_CONTEXT_PROJECT:
 			gtk_widget_set_sensitive (s_popup_menu.add_project, TRUE);
 			gtk_widget_set_sensitive (s_popup_menu.remove_project, TRUE);
@@ -798,6 +848,15 @@ static void popup_menu_on_remove_file_or_dir(G_GNUC_UNUSED GtkMenuItem *menuitem
 }
 
 
+/** cleanup the popup menu.
+ *
+ **/
+void popup_menu_cleanup(void)
+{
+	gtk_widget_destroy(s_popup_menu.widget);
+}
+
+
 /** Setup/Initialize the popup menu.
  *
  **/
@@ -806,6 +865,18 @@ void popup_menu_init(void)
 	GtkWidget *item;
 
 	s_popup_menu.widget = gtk_menu_new();
+
+	item = gtk_menu_item_new_with_mnemonic(_("_New workbench"));
+	gtk_widget_hide(item);
+	gtk_container_add(GTK_CONTAINER(s_popup_menu.widget), item);
+	g_signal_connect(item, "activate", G_CALLBACK(item_new_workbench_activate_cb), NULL);
+	s_popup_menu.new_workbench = item;
+
+	item = gtk_menu_item_new_with_mnemonic(_("_Open workbench"));
+	gtk_widget_hide(item);
+	gtk_container_add(GTK_CONTAINER(s_popup_menu.widget), item);
+	g_signal_connect(item, "activate", G_CALLBACK(item_open_workbench_activate_cb), NULL);
+	s_popup_menu.open_workbench = item;
 
 	item = gtk_menu_item_new_with_mnemonic(_("_Add project..."));
 	gtk_widget_show(item);
