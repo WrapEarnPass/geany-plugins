@@ -1017,7 +1017,43 @@ void sidebar_update (SIDEBAR_EVENT event, SIDEBAR_CONTEXT *context)
 }
 
 
-/* Callback function for clicking on a sidebar item */
+/* Callback function for single click or cursor move on a sidebar item */
+static void sidebar_file_view_on_row_selected (GtkTreeView *treeview,
+	GtkTreePath *path, G_GNUC_UNUSED GtkTreeViewColumn *col, G_GNUC_UNUSED gpointer userdata)
+{
+	//If the cursor isn’t currently set, then path will be NULL. If no column currently has focus, then focus_column will be NULL.
+	gtk_tree_view_get_cursor(treeview, &path, &col);
+	if(path==NULL)
+	{
+		return;
+	}
+
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	GtkTreeIter  iter;
+	if (gtk_tree_model_get_iter(model, &iter, path))
+	{
+		guint dataid;
+		gtk_tree_model_get(model, &iter, FILEVIEW_COLUMN_DATA_ID, &dataid, -1);
+		if(dataid==DATA_ID_FILE)
+		{
+			gchar *name;
+			gtk_tree_model_get(model, &iter, FILEVIEW_COLUMN_NAME, &name, -1);
+			gpointer *filename;
+			gtk_tree_model_get(model, &iter, FILEVIEW_COLUMN_ASSIGNED_DATA_POINTER, &filename, -1);
+			GeanyDocument *doc =document_find_by_real_path((gchar *)filename);
+			if(doc!=NULL)
+			{
+				gint page = document_get_notebook_page(doc);
+				gtk_notebook_set_current_page(GTK_NOTEBOOK(wb_globals.geany_plugin->geany_data->main_widgets->notebook), page);
+			}
+		}
+	}
+
+	g_free(path);
+}
+
+
+/* Callback function for double clicking on a sidebar item */
 static void sidebar_file_view_on_row_activated (GtkTreeView *treeview,
 	GtkTreePath *path, G_GNUC_UNUSED GtkTreeViewColumn *col, G_GNUC_UNUSED gpointer userdata)
 {
@@ -1428,6 +1464,9 @@ void sidebar_init(void)
 	/**** tree view ****/
 
 	sidebar.file_view = gtk_tree_view_new();
+	//single click handler
+	g_signal_connect(sidebar.file_view, "cursor-changed", (GCallback)sidebar_file_view_on_row_selected, NULL);
+	//double click handler
 	g_signal_connect(sidebar.file_view, "row-activated", (GCallback)sidebar_file_view_on_row_activated, NULL);
 
 	sidebar.file_store = gtk_tree_store_new(FILEVIEW_N_COLUMNS, G_TYPE_ICON, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_POINTER);
