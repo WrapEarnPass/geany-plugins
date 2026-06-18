@@ -908,6 +908,36 @@ static void sidebar_update_workbench(GtkTreeIter *iter, gint *position)
 }
 
 
+/* Callback function for document activate */
+void sidebar_on_doc_activate(GeanyDocument * doc)
+{
+	if( workbench_is_empty(wb_globals.opened_wb) || doc == NULL || doc->file_name == NULL)
+	{
+		return;
+	}
+	g_message("doc activate");
+	msgwin_status_add("doc activate");
+	//check if doc-file_name is in the workbench
+	//have to because the file could have been opened outside of the workbench
+	SIDEBAR_CONTEXT ret_con;
+	ret_con = workbench_file_is_included_dir(wb_globals.opened_wb, doc->file_name);
+	if(ret_con.project != NULL && ret_con.directory!=NULL)
+	{
+		ITER_SEARCH_RESULT search_result;
+		if(sidebar_get_filepath_iter(ret_con.project, ret_con.directory, doc->file_name, &search_result))
+		{
+			g_message("found iter");
+			msgwin_status_add("found iter");
+			GtkTreeIter tree_iter = search_result.iter;
+			GtkTreeSelection* selector = gtk_tree_view_get_selection (  GTK_TREE_VIEW(sidebar.file_view ));
+			//activate the file in the filetree?
+			gtk_tree_selection_select_iter (selector,	&tree_iter);
+			//don't wb_idle_queue_add_action this, as a document selection should be immediate
+		}
+	}
+}
+
+
 /** Update the sidebar.
  *
  * Update the sidebar according to the given situation/event @a event
@@ -987,7 +1017,7 @@ void sidebar_update (SIDEBAR_EVENT event, SIDEBAR_CONTEXT *context)
 
 
 /* Callback function for clicking on a sidebar item */
-static void sidebar_filew_view_on_row_activated (GtkTreeView *treeview,
+static void sidebar_file_view_on_row_activated (GtkTreeView *treeview,
 	GtkTreePath *path, G_GNUC_UNUSED GtkTreeViewColumn *col, G_GNUC_UNUSED gpointer userdata)
 {
 	gchar *info;
@@ -1397,7 +1427,7 @@ void sidebar_init(void)
 	/**** tree view ****/
 
 	sidebar.file_view = gtk_tree_view_new();
-	g_signal_connect(sidebar.file_view, "row-activated", (GCallback)sidebar_filew_view_on_row_activated, NULL);
+	g_signal_connect(sidebar.file_view, "row-activated", (GCallback)sidebar_file_view_on_row_activated, NULL);
 
 	sidebar.file_store = gtk_tree_store_new(FILEVIEW_N_COLUMNS, G_TYPE_ICON, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_POINTER);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(sidebar.file_view), GTK_TREE_MODEL(sidebar.file_store));
