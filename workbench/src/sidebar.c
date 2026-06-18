@@ -83,7 +83,7 @@ typedef struct SIDEBAR
 static SIDEBAR sidebar = {NULL, NULL, NULL, NULL};
 
 static gboolean sidebar_get_directory_iter(WB_PROJECT *prj, WB_PROJECT_DIR *dir, GtkTreeIter *iter);
-static gboolean sidebar_get_filepath_iter (WB_PROJECT *prj, WB_PROJECT_DIR *root, const gchar *filepath, ITER_SEARCH_RESULT *result);
+static gboolean sidebar_get_filepath_iter (WB_PROJECT *prj, WB_PROJECT_DIR *root, const gchar *filepath, ITER_SEARCH_RESULT *search_result);
 
 /* Remove all child nodes below parent */
 static void sidebar_remove_children(GtkTreeIter *parent)
@@ -915,8 +915,6 @@ void sidebar_on_doc_activate(GeanyDocument * doc)
 	{
 		return;
 	}
-	g_message("doc activate");
-	msgwin_status_add("doc activate");
 	//check if doc-file_name is in the workbench
 	//have to because the file could have been opened outside of the workbench
 	SIDEBAR_CONTEXT ret_con;
@@ -926,13 +924,16 @@ void sidebar_on_doc_activate(GeanyDocument * doc)
 		ITER_SEARCH_RESULT search_result;
 		if(sidebar_get_filepath_iter(ret_con.project, ret_con.directory, doc->file_name, &search_result))
 		{
-			g_message("found iter");
-			msgwin_status_add("found iter");
 			GtkTreeIter tree_iter = search_result.iter;
-			GtkTreeSelection* selector = gtk_tree_view_get_selection (  GTK_TREE_VIEW(sidebar.file_view ));
-			//activate the file in the filetree?
+			GtkTreeSelection* selector = gtk_tree_view_get_selection(GTK_TREE_VIEW(sidebar.file_view ));
+			//activate the file in the filetree
 			gtk_tree_selection_select_iter (selector,	&tree_iter);
 			//don't wb_idle_queue_add_action this, as a document selection should be immediate
+			GtkTreePath *path = gtk_tree_model_get_path(GTK_TREE_MODEL(sidebar.file_store), &tree_iter);
+			//expand the file we selected
+			gtk_tree_view_expand_row (GTK_TREE_VIEW(sidebar.file_view),	path, TRUE);
+			//scroll to the file we selected
+			gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(sidebar.file_view), path, NULL, TRUE, 0.5f,0.5f);
 		}
 	}
 }
