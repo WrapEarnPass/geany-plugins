@@ -4,7 +4,8 @@ plugin = autorun
 geanyplugins_LTLIBRARIES = autorun.la
 
 autorun_la_SOURCES = \
-	plugin_main.c
+	plugin_main.c \
+	autorun.c
 
 autorun_la_CPPFLAGS = $(AM_CPPFLAGS) \
 	-DG_LOG_DOMAIN=\"Autorun\"
