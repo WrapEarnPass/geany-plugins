@@ -19,6 +19,9 @@ autoclose/src/autoclose.c
 # Automark
 automark/src/automark.c
 
+# Autorun
+autorun/src/plugin_main.c
+
 # codenav
 codenav/src/codenavigation.c
 codenav/src/goto_file.c

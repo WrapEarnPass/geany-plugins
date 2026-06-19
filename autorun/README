@@ -1,0 +1,130 @@
+=========
+Auto-run
+=========
+
+.. contents::
+
+About
+=====
+
+The Auto-run plugin is an extension that makes it possible to add action handlers to
+geany. The initial release targets document-save and document-before-save
+
+Usage
+=====
+
+Enabling the plugin
+-------------------
+The plugin can be enabled in the plugin manager.
+There will also be a new entry in the "Tools" menu.
+
+The Auto-run menu
+------------------
+The Auto-run menu allows you to manage the Project level Auto-run configs.
+
+Manually setting Auto-run configs
+---------------------------------
+You can manually set Project level Auto-run configs under the keyfile heading [autorun],
+using https://wiki.geany.org/howtos/configurebuildmenu#build-menu style entries.
+
+FILETYPEIA_NN_TA
+
+FILETYPE is a Geany filetype label, e.g. (C|C++|C#|JSON) from geany/filetype_extensions.conf
+
+IA(Intercepted Action) = (BS|OS),
+* BS is Geany document-before-save
+* OS is Geany document-save (on save)
+
+NN = (00|01|...)
+NN is a two digit number allowing for multiple tasks for a given entry.
+
+TA(Target Action) = (CM|WD)
+* CM is the command to run
+* WD is the working directory to run from.
+
+Auto-run supports the following replacements in CM and WD
+%f - the basename of the file being saved.
+%e - the basename but without the last extension.
+%d - the absolute path of the directory of the file being saved.
+%p - the absolute path of the base directory of the currently open project.
+
+CBS_00_CM = formatter %f
+CBS_00_WD = %d
+COS_00_CM = linter %f
+COS_00_WD = %p
+#Run formatter on %f from %d before file write, and then linter on the newly written %f from %p
+# when attempting to save a C file type.
+
+C++OS_00_CM = cppcheck %f --output-file=%p/cppcheck.log
+C++OS_00_WD = %d
+C++OS_01_CM = clang-tidy -p %p --format-style=file %f
+C++OS_01_WD = %p
+#Run cppcheck on %f from %d, and clang-tidy on %f from %p after file write when saving a C++ file type.
+
+Set Auto-run actions across Projects
+------------------------------------
+To set Autorun across Projects without having to edit each .geany file, you can use filedefs
+https://www.geany.org/manual/#filetype-definition-files under the keyfile heading [autorun]
+with a syntax similar to the Project configs.
+
+AC_NN_FF
+where
+AC = (BS|OS), NN = (00|01|...), FF=(LB|CM|WD)
+
+BS_00_LB = format
+BS_00_CM = formatter %f
+BS_00_WD = %d
+
+When Auto-run loads, it will scan all User config dir filedefs/filetypes.*
+for any [autorun] sections and set actions for all matching filetypes.
+User config dir filedefs settings will be overridden by any Project settings.
+filedefs/filetypes.c
+BS_00_CM = formatter %f
+project.geany
+CBS_00_CM = fancyformatter %f
+
+Autorun will run fancyformatter before save for C files as long as project.geany is open.
+
+All Auto-run actions will target the Geany Terminal pane.
+
+Known issues
+============
+
+Auto-run does not support forking, any commands will be run one after another.
+
+License
+=======
+
+The Auto-run plugin is distributed under the terms of the GNU General
+Public License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.  A copy
+of this license can be found in the file COPYING included with the source
+code of this program.
+
+Downloads
+=========
+
+The Auto-run plugin is part of the combined Geany Plugins release.
+For more information and downloads, please visit
+http://plugins.geany.org/geany-plugins/
+
+Development Code
+================
+
+Get the code from::
+
+    git clone https://github.com/geany/geany-plugins.git
+
+Ideas, questions, patches and bug reports
+=========================================
+
+Please post any ideas, feature requests, questions and bugs in the
+github issue tracker.
+
+History
+=======
+
+This is a short release history showing the major changes:
+
+**0.1:**
+  Created plugin
