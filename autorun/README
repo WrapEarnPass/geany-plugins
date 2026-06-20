@@ -22,6 +22,7 @@ The Auto-run menu
 ------------------
 The Auto-run menu allows you to manage the Project level Auto-run configs.
 
+
 Manually setting Auto-run configs
 ---------------------------------
 You can manually set Project level Auto-run configs under the keyfile heading [autorun],
@@ -42,18 +43,12 @@ TA(Target Action) = (CM|WD)
 * CM is the command to run
 * WD is the working directory to run from.
 
-Auto-run supports the following replacements in CM and WD
-%f - the basename of the file being saved.
-%e - the basename but without the last extension.
-%d - the absolute path of the directory of the file being saved.
-%p - the absolute path of the base directory of the currently open project.
-
-CBS_00_CM = formatter %f
+CBS_00_CM = formatter
 CBS_00_WD = %d
 COS_00_CM = linter %f
 COS_00_WD = %p
-#Run formatter on %f from %d before file write, and then linter on the newly written %f from %p
-# when attempting to save a C file type.
+#Run formatter before file write, and then linter on the newly written %f from %p
+#when attempting to save a C file type.
 
 C++OS_00_CM = cppcheck %f --output-file=%p/cppcheck.log
 C++OS_00_WD = %d
@@ -69,28 +64,49 @@ with a syntax similar to the Project configs.
 
 AC_NN_FF
 where
-AC = (BS|OS), NN = (00|01|...), FF=(LB|CM|WD)
+AC = (BS|OS), NN = (00|01|...), FF=(CM|WD)
 
-BS_00_LB = format
-BS_00_CM = formatter %f
-BS_00_WD = %d
+BS_00_CM = formatter
+OS_00_CM = linter %f
+
 
 When Auto-run loads, it will scan all User config dir filedefs/filetypes.*
 for any [autorun] sections and set actions for all matching filetypes.
 User config dir filedefs settings will be overridden by any Project settings.
-filedefs/filetypes.c
+
+Example:
+(userconfigdir)/filedefs/filetypes.c
 BS_00_CM = formatter %f
-project.geany
+(userprojectdir)/project.geany
 CBS_00_CM = fancyformatter %f
 
 Autorun will run fancyformatter before save for C files as long as project.geany is open.
 
 All Auto-run actions will target the Geany Terminal pane.
 
+Auto-run replacements
+---------------------
+
+Auto-run supports the following replacements in CM and WD
+%f - the basename of the file being saved.
+%e - the basename but without the last extension.
+%d - the absolute path of the directory of the file being saved.
+%p - the absolute path of the base directory of the currently open project.
+
+The BS Intercepted Action by default does not need the %f argument as it
+operates on the contents of the Scintilla editor.
+
+Why would BS targets support %f then?
+Place the %f replacement in the BS target if you know the CM does not honor STDIN.
+In that case Auto-run will dump the contents of Scintilla to a temp file.
+
+Known examples: cmake-format
+
+
 Known issues
 ============
 
-Auto-run does not support forking, any commands will be run one after another.
+Auto-run does not support forking, any commands will synchronously (spawn_sync).
 
 License
 =======
