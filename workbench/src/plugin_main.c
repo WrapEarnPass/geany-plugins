@@ -120,7 +120,7 @@ static void plugin_workbench_on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFil
 	//if the project has a workbench, and one isn't loaded, load the workbench
 	if(wb_globals.opened_wb == NULL){
 		//no workbench
-		const gchar* keyfile_string = utils_get_setting_string(config, "workbench", "workbench", "");
+		const gchar* keyfile_string = utils_get_setting_string(config, "Workbench", "Attach-WB", "");
 		if(g_strcmp0(keyfile_string, "") != 0){
 			//this project has a workbench, load it
 			wb_globals.opened_wb = workbench_new();
@@ -131,7 +131,7 @@ static void plugin_workbench_on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFil
 				sidebar_update(SIDEBAR_CONTEXT_WB_OPENED, NULL);
 			}else{
 				//workbench attached to this project is invalid.
-				g_key_file_set_string(config, "workbench", "workbench", "");
+				g_key_file_set_string(config, "Workbench", "Attach-WB", "");
 				msgwin_status_add(_("Could not open workbench file: %s"), error->message);
 				workbench_free(wb_globals.opened_wb);
 				wb_globals.opened_wb = NULL;
@@ -145,10 +145,10 @@ static void plugin_workbench_on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFil
 	//if the project doesn't have a workbench, but one is loaded, set the workbench
 	if(wb_globals.opened_wb != NULL){
 		//we have a workbench
-		const gchar* keyfile_string = utils_get_setting_string(config, "workbench", "workbench", "");
+		const gchar* keyfile_string = utils_get_setting_string(config, "Workbench", "Attach-WB", "");
 		if(g_strcmp0(keyfile_string, "") == 0){
 			//this project doesn't have a workbench, attach this one.
-			g_key_file_set_string(config, "workbench", "workbench", workbench_get_filename(wb_globals.opened_wb));
+			g_key_file_set_string(config, "Workbench", "Attach-WB", workbench_get_filename(wb_globals.opened_wb));
 		}
 	}
 }
