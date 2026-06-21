@@ -15,20 +15,31 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
+
 #include <geanyplugin.h>
 #include <gtk/gtk.h>
 
 #include "autorun.h"
 
-/* Handler to read any Project declared Auto-run configs 
- * For Auto-run, this the same as a project-save event */
+/* Handler to read any Project declared Auto-run configs */
 static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
+	g_message("on_project_open");
 	load_projectdefs(config);
 }
+
+// this handler is currently disconnected due to geany/geany#4603
+/* Handler to read any Project declared Auto-run configs */
+//static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
+//	g_message("on_project_save");
+//	load_projectdefs(config);
+//}
+
 
 /* Handler to clear any old Project declared Auto-run configs */
 static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer user_data) {
 	//unload project handlers
+	autorun_cmd_list_free(autorun_globals->project_commands);
+	autorun_globals->project_commands=NULL;
 }
 
 /* Handler to run any applicable Auto-run configs after a write*/
@@ -53,7 +64,7 @@ void on_doc_before_save(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc, G_GNUC_U
 
 PluginCallback plugin_callbacks[] = { 
 	{ "project-open", (GCallback)&on_project_open, TRUE, NULL },
-	{ "project-save", (GCallback)&on_project_open, TRUE, NULL },
+	//{ "project-save", (GCallback)&on_project_save, TRUE, NULL },// geany/geany#4603
 	{ "project-close", (GCallback)&on_project_close, TRUE, NULL },
 	{ "document-save", (GCallback)&on_doc_save, TRUE, NULL},
 	{ "document-before-save", (GCallback)&on_doc_before_save, TRUE, NULL},
@@ -64,24 +75,28 @@ PluginCallback plugin_callbacks[] = {
 /* Bring up plugin and load filetypes.FILE that exist for Auto-run */
 static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 	if (!autorun_globals || autorun_globals == NULL) {
+		g_message("autorun_init start");
 		autorun_globals_init(plugin);
 		load_filedefs();
-		
-		//if initialized while a project is already open, manually ingest the project	
+
+		//if initialized while a project is already open, manually ingest the project
 		if(autorun_globals->data->app && autorun_globals->data->app->project) {
 			// force a GKeyFile
 			GKeyFile* config=g_key_file_new ();
 			g_key_file_load_from_file(config,  autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
 			load_projectdefs(config);
-			g_free(config);	
+			g_free(config);
 		}
 	}
+	g_message("autorun_init end");
 	return TRUE;
 }
 
 /* ensure destruction of any Auto-run objects */
 static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
-	autorun_globals_cleanup();
+	g_message("autorun_cleanup start");
+	autorun_globals_free();
+	g_message("autorun_cleanup end");
 }
 
 G_MODULE_EXPORT
