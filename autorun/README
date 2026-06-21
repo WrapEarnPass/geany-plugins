@@ -28,7 +28,7 @@ Manually setting Auto-run configs
 You can manually set Project level Auto-run configs under the keyfile heading [autorun],
 using https://wiki.geany.org/howtos/configurebuildmenu#build-menu style entries.
 
-FILETYPEIA_NN_TA
+FILETYPE_IA_NN_TA
 
 FILETYPE is a Geany filetype label, e.g. (C|C++|C#|JSON) from geany/filetype_extensions.conf
 
@@ -43,17 +43,17 @@ TA(Target Action) = (CM|WD)
 * CM is the command to run
 * WD is the working directory to run from.
 
-CBS_00_CM = formatter
-CBS_00_WD = %d
-COS_00_CM = linter %f
-COS_00_WD = %p
+C_BS_00_CM = formatter
+C_BS_00_WD = %d
+C_OS_00_CM = linter %f
+C_OS_00_WD = %p
 #Run formatter before file write, and then linter on the newly written %f from %p
 #when attempting to save a C file type.
 
-C++OS_00_CM = cppcheck %f --output-file=%p/cppcheck.log
-C++OS_00_WD = %d
-C++OS_01_CM = clang-tidy -p %p --format-style=file %f
-C++OS_01_WD = %p
+C++_OS_00_CM = cppcheck %f --output-file=%p/cppcheck.log
+C++_OS_00_WD = %d
+C++_OS_01_CM = clang-tidy -p %p --format-style=file %f
+C++_OS_01_WD = %p
 #Run cppcheck on %f from %d, and clang-tidy on %f from %p after file write when saving a C++ file type.
 
 Set Auto-run actions across Projects
@@ -62,9 +62,9 @@ To set Autorun across Projects without having to edit each .geany file, you can 
 https://www.geany.org/manual/#filetype-definition-files under the keyfile heading [autorun]
 with a syntax similar to the Project configs.
 
-AC_NN_FF
+IA_NN_TA
 where
-AC = (BS|OS), NN = (00|01|...), FF=(CM|WD)
+IA = (BS|OS), NN = (00|01|...), TA=(CM|WD)
 
 BS_00_CM = formatter
 OS_00_CM = linter %f
@@ -107,6 +107,8 @@ Known issues
 ============
 
 Auto-run does not support forking, any commands will synchronously (spawn_sync).
+geany/geany#4603 prevents reloading the Project configs in realtime.
+	unload and reload the Plugin from Plugin manager as a workaround.
 
 License
 =======
