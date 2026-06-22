@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <geanyplugin.h> 
+#include <geanyplugin.h>
+#include <glib.h>
+#include <spawn.h>
 
 #include "utils.h"
 #include "autorun.h"
@@ -42,10 +44,16 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 	gchar **  tokens;
 	tokens = g_strsplit(key, "_", 4);
 	gboolean invalid = FALSE;
-	
+
 	switch (g_strv_length(tokens)){
 		//strv of 3 is filedef, 4 is project
 			case 3:{
+				g_message("processing filedef!");
+				g_message("type is null? %s", (cmd->file_type ==NULL)?"true":"false");
+				g_message("filetype already %s", filetypes_get_display_name(cmd->file_type));
+				g_message("interceptor %s",tokens[0]);
+				g_message("order %s",tokens[1]);
+				g_message("flag %s",tokens[2]);
 				//the caller has to set filetype
 				if(g_strcmp0(tokens[0],"BS")==0){
 					cmd->interceptor= g_strdup(tokens[0]);
@@ -55,7 +63,7 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 				}else{
 					invalid = TRUE;
 				}
-		
+
 				gint offset=atoi(tokens[1]);
 				if(offset<0 ||offset>99 ){
 					invalid = TRUE;
@@ -75,7 +83,13 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 				break;
 			}
 			case 4:{
-					cmd->filetype= filetypes_lookup_by_name(tokens[0]);
+					g_message("processing project!");
+					g_message("filetype %s",tokens[0] );
+					g_message("interceptor %s",tokens[1]);
+					g_message("order %s",tokens[2]);
+					g_message("flag %s",tokens[3]);
+					
+					cmd->file_type= filetypes_lookup_by_name(tokens[0]);
 
 					if(g_strcmp0(tokens[1],"BS")==0){
 						cmd->interceptor= g_strdup(tokens[1]);
@@ -115,3 +129,13 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 	
 	return cmd->invalid;
 }
+
+/* invoke mktemp() in a crossplatformy way */
+void autorun_make_temp(gchar*)
+{
+	//g_get_tmp_dir()
+	//g_chdir()
+	//sg_mkstemp()
+}
+
+

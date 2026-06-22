@@ -23,29 +23,28 @@
 AUTORUN_GLOBALS* autorun_globals;
 
 
-void autorun_cmd_new(AUTORUN_CMD* cmd){
-	if(cmd!=NULL)
-	{
-		//we're all full here.
-		return;
-	}
-	cmd= g_new0(AUTORUN_CMD,1);
-	cmd->filetype=NULL;
+AUTORUN_CMD* autorun_cmd_new(){
+	AUTORUN_CMD* cmd=NULL;
+	cmd=g_new0(AUTORUN_CMD,1);
+	cmd->file_type=NULL;
 	cmd->interceptor=NULL;
 	cmd->command=NULL;
 	cmd->working_dir=NULL;
 	cmd->invalid=TRUE;
 	cmd->order=0;
+	return cmd;
 }
 
 void autorun_cmd_free(AUTORUN_CMD* cmd){
-		if(cmd==NULL||cmd->invalid){
+		/* do not check for cmd->invalid because it could be a partial command
+		 * or invalidated after assembly. */
+		if(cmd==NULL){
 			//who are you and why are you in my attic?
 			return;
 		}
 		//free the command
-		if(cmd->filetype !=NULL){
-			cmd->filetype=NULL;
+		if(cmd->file_type !=NULL){
+			cmd->file_type=NULL;
 		}
 		if(cmd->interceptor !=NULL){
 			g_free(cmd->interceptor);
@@ -110,7 +109,7 @@ void load_filedefs(void)
 	GSList * file_list = utils_get_file_list(filedef_path, &filedef_len, NULL);
 	if( filedef_len > 0){
 		// stash filetypes.FILE to fallback on-project-close
-		GSList* node;
+		GSList* node=NULL;
 		foreach_slist(node,file_list){
 			if( g_str_has_prefix(node->data, "filetypes.") && g_strcmp0(node->data, "filetypes.README")!=0 )
 			{
@@ -128,22 +127,24 @@ void load_filedefs(void)
 					foreach_strv( handler_key, handlers){
 						g_message(" %s", *handler_key);
 						if(g_str_has_suffix(*handler_key,"CM")){
-							AUTORUN_CMD cmd;
-							autorun_cmd_new(&cmd);
-							parse_intercept_actions(*handler_key, config, &cmd );
-							if(!cmd.invalid){
-								cmd.filetype=filetypes_detect_from_file(node->data);
-								g_message ("filetype was %s", filetypes_get_display_name(cmd.filetype));
+							AUTORUN_CMD* cmd = autorun_cmd_new();
+							cmd->file_type=filetypes_detect_from_file(node->data);
+							g_message ("filetype was %s", filetypes_get_display_name(cmd->file_type));
+							parse_intercept_actions(*handler_key, config, cmd );
+							if(!cmd->invalid){
 								//add the command
-								autorun_globals->filedef_commands = g_slist_prepend (autorun_globals->filedef_commands, &cmd);
+								autorun_globals->filedef_commands = g_slist_prepend(autorun_globals->filedef_commands, cmd);
 								g_message ("filedef list is %i" ,g_slist_length(autorun_globals->filedef_commands));
+
 							}
 							else{
 								//free the command
-								autorun_cmd_free(&cmd);
+								autorun_cmd_free(cmd);
 							}
 						}
 					}
+					//flip it around
+					autorun_globals->filedef_commands = g_slist_reverse(autorun_globals->filedef_commands);
 				}else
 				{
 					g_free(gerr);
@@ -152,8 +153,8 @@ void load_filedefs(void)
 				g_free(handlers);
 			}
 		}
-		
 	}
+	
 	//cleanup
 	g_slist_foreach(file_list, (GFunc) g_free, NULL);
 	g_slist_free(file_list);
@@ -166,27 +167,28 @@ void load_projectdefs(GKeyFile* config){
 	gchar** handlers = g_key_file_get_keys(config, "autorun", &key_len, &gerr);
 	//if the keyfile has an [autorun] section
 	if( gerr==NULL ){
-	g_message("found project autorun");
-	gchar** handler_key;
-	//load any handlers
-	foreach_strv( handler_key, handlers){
-		//over any existing [autorun] handlers
-		g_message(" %s", *handler_key);
-		if(g_str_has_suffix(*handler_key,"CM")){
-			AUTORUN_CMD cmd;
-			autorun_cmd_new(&cmd);
-			parse_intercept_actions(*handler_key, config, &cmd );
-			if(!cmd.invalid){
-				//add the command
-				autorun_globals->project_commands = g_slist_prepend (autorun_globals->project_commands, &cmd);
-				g_message ("proj command list is %i" ,g_slist_length(autorun_globals->filedef_commands));
-			}
-			else{
-				//free the command
-				autorun_cmd_free(&cmd);
+		g_message("found project autorun");
+		gchar** handler_key;
+		//load any handlers
+		foreach_strv( handler_key, handlers){
+			//over any existing [autorun] handlers
+			g_message(" %s", *handler_key);
+			if(g_str_has_suffix(*handler_key,"CM")){
+				AUTORUN_CMD* cmd = autorun_cmd_new();
+				parse_intercept_actions(*handler_key, config, cmd );
+				if(!cmd->invalid){
+					//add the command
+					autorun_globals->project_commands = g_slist_prepend (autorun_globals->project_commands, cmd);
+				}
+				else{
+					//free the command
+					autorun_cmd_free(cmd);
+				}
 			}
 		}
-	}
+		//flip it around
+		autorun_globals->project_commands = g_slist_reverse(autorun_globals->project_commands);
+		g_message ("proj command list is %i" ,g_slist_length(autorun_globals->project_commands));
 	}else{
 		g_free(gerr);
 	}

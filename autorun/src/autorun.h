@@ -24,13 +24,13 @@ typedef struct
 {
     GeanyPlugin *plugin;
     GeanyData *data;
-   	GSList * filedef_commands;
+	GSList * filedef_commands;
    	GSList * project_commands;
 }AUTORUN_GLOBALS;
 
 typedef struct
 {
-    GeanyFiletype * filetype;
+    GeanyFiletype * file_type;
     gchar* interceptor;
     gushort order;
     gchar* command;
@@ -43,7 +43,7 @@ void autorun_globals_init(GeanyPlugin *plugin);
 void autorun_globals_free(void);
 void autorun_cmd_list_free(GSList* command_list);
 void autorun_cmd_free(AUTORUN_CMD* cmd);
-void autorun_cmd_new(AUTORUN_CMD* cmd);
+AUTORUN_CMD* autorun_cmd_new(void);
 void load_filedefs(void);
 void load_projectdefs(GKeyFile* config);
 
