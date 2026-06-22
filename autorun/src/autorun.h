@@ -39,6 +39,7 @@ typedef struct
 }AUTORUN_CMD;
 
 extern AUTORUN_GLOBALS* autorun_globals;
+
 void autorun_globals_init(GeanyPlugin *plugin);
 void autorun_globals_free(void);
 void autorun_cmd_list_free(GSList* command_list);

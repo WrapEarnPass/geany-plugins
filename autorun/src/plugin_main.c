@@ -23,38 +23,34 @@
 #include "spawn.h"
 
 /* Handler to read any Project declared Auto-run configs */
-static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
+static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
 	g_message("on_project_open start");
-	//TODO make this more smarter
-	if(autorun_globals->project_commands==NULL)
-	{
+	// TODO make this more smarter
+	if (autorun_globals->project_commands == NULL) {
 		load_projectdefs(config);
 	}
 	g_message("on_project_open end");
-
 }
-
 
 // this handler is currently disconnected due to geany/geany#4603
 /* Handler to read any Project declared Auto-run configs */
-//static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
+// static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
 //	g_message("on_project_save");
 //	load_projectdefs(config);
-//}
-
+// }
 
 /* Handler to clear any old Project declared Auto-run configs */
 static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer user_data) {
-g_message("project close start");
-	//unload project handlers
+	g_message("project close start");
+	// unload project handlers
 	autorun_cmd_list_free(autorun_globals->project_commands);
-	autorun_globals->project_commands=NULL;
-g_message("project close end");
+	autorun_globals->project_commands = NULL;
+	g_message("project close end");
 }
 
 /* Handler to run any applicable Auto-run configs after a write*/
-void on_doc_save(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc, G_GNUC_UNUSED gpointer user_data){
-g_message("on save start");
+void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
+	g_message("on save start");
 	/* disabled because geany/geany#4604 never sets doc->changed
 	if(!doc->changed)
 	{
@@ -65,33 +61,32 @@ g_message("on save start");
 	ui_progress_bar_start(NULL);
 	dispatch_run("OS", doc);
 	ui_progress_bar_stop();
-g_message("on save end");
+	g_message("on save end");
 }
 
-
 /* Handler to run any applicable Auto-run configs before a write*/
-void on_doc_before_save(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc, G_GNUC_UNUSED gpointer user_data){
-g_message("before save start");
-	if(!doc->changed)
-	{
+void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
+	g_message("before save start");
+	if (!doc->changed) {
 		g_message("doc not changed?");
 		return;
 	}
 	ui_progress_bar_start(NULL);
 	dispatch_run("BS", doc);
 	ui_progress_bar_stop();
-g_message("before save end");
+	g_message("before save end");
 }
 
+// clang-format off
 PluginCallback plugin_callbacks[] = {
 	{ "project-open", (GCallback)&on_project_open, TRUE, NULL },
 	//{ "project-save", (GCallback)&on_project_save, TRUE, NULL },// geany/geany#4603
 	{ "project-close", (GCallback)&on_project_close, TRUE, NULL },
-	{ "document-save", (GCallback)&on_doc_save, TRUE, NULL},
-	{ "document-before-save", (GCallback)&on_doc_before_save, TRUE, NULL},
+	{ "document-save", (GCallback)&on_doc_save, TRUE, NULL },
+	{ "document-before-save", (GCallback)&on_doc_before_save, TRUE, NULL },
 	{ NULL, NULL, FALSE, NULL }
 };
-
+// clang-format on
 
 /* Bring up plugin and load filetypes.FILE that exist for Auto-run */
 static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
@@ -99,15 +94,15 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 	if (!autorun_globals || autorun_globals == NULL) {
 		autorun_globals_init(plugin);
 		load_filedefs();
-		g_message ("filedef command list is %i" ,g_slist_length(autorun_globals->filedef_commands));
+		g_message("filedef command list is %i", g_slist_length(autorun_globals->filedef_commands));
 
-		//if initialized while a project is already open, manually ingest the project
-		if(autorun_globals->data->app && autorun_globals->data->app->project) {
+		// if initialized while a project is already open, manually ingest the project
+		if (autorun_globals->data->app && autorun_globals->data->app->project) {
 			// force a GKeyFile
-			GKeyFile* config=g_key_file_new ();
-			g_key_file_load_from_file(config,  autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+			GKeyFile* config = g_key_file_new();
+			g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
 			load_projectdefs(config);
-			g_message ("proj command list is %i" ,g_slist_length(autorun_globals->project_commands));
+			g_message("proj command list is %i", g_slist_length(autorun_globals->project_commands));
 			g_free(config);
 		}
 	}
@@ -115,11 +110,10 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 	return TRUE;
 }
 
-
 /* ensure destruction of any Auto-run objects */
 static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
 	g_message("autorun_cleanup start");
-	if ( autorun_globals != NULL) {
+	if (autorun_globals != NULL) {
 		autorun_globals_free();
 	}
 	g_message("autorun_cleanup end");
@@ -127,7 +121,7 @@ static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
 
 G_MODULE_EXPORT
 void geany_load_module(GeanyPlugin* plugin) {
-g_message("load_module start");
+	g_message("load_module start");
 	// who am we?
 	plugin->info->name = "Auto-run";
 	plugin->info->description = _("Geany action interceptor plugin");
@@ -144,6 +138,5 @@ g_message("load_module start");
 
 	// go forth and come fifth.
 	GEANY_PLUGIN_REGISTER(plugin, 225);
-g_message("load_module end");
-
+	g_message("load_module end");
 }

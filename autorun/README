@@ -22,6 +22,28 @@ The Auto-run menu
 ------------------
 The Auto-run menu allows you to manage the Project level Auto-run configs.
 
+Auto-run replacements
+---------------------
+
+Auto-run supports the following replacements in CM and WD
+%f - the basename of the file being saved.
+%a - the absolute path of the file being saved.
+%d - the absolute path of the directory of the file being saved.
+%p - the absolute path of the base directory of the currently open project.
+
+The BS Intercepted Action by default does not need the %a argument as it
+operates on the contents of the Scintilla editor.
+
+Why would BS targets support %a then?
+Place the %a replacement in the BS target if you know the CM does not honor STDIN.
+In that case Auto-run will dump the contents of Scintilla to a temp file.
+
+clang-format, which reads stdin, would like to the filename for formatting rules.
+e.g. clang-format --assume-filename=%f
+
+cmake-format, which does not read stdin
+e.g. cmake-format %a
+
 
 Manually setting Auto-run configs
 ---------------------------------
@@ -45,9 +67,9 @@ TA(Target Action) = (CM|WD)
 
 C_BS_00_CM = formatter
 C_BS_00_WD = %d
-C_OS_00_CM = linter %f
+C_OS_00_CM = linter %a
 C_OS_00_WD = %p
-#Run formatter before file write, and then linter on the newly written %f from %p
+#Run formatter before file write, and then linter on the newly written %d/%f from %p
 #when attempting to save a C file type.
 
 C++_OS_00_CM = cppcheck %f --output-file=%p/cppcheck.log
@@ -83,24 +105,6 @@ CBS_00_CM = fancyformatter %f
 Autorun will run fancyformatter before save for C files as long as project.geany is open.
 
 All Auto-run actions will target the Geany Terminal pane.
-
-Auto-run replacements
----------------------
-
-Auto-run supports the following replacements in CM and WD
-%f - the basename of the file being saved.
-%d - the absolute path of the directory of the file being saved.
-%p - the absolute path of the base directory of the currently open project.
-
-The BS Intercepted Action by default does not need the %f argument as it
-operates on the contents of the Scintilla editor.
-
-Why would BS targets support %f then?
-Place the %f replacement in the BS target if you know the CM does not honor STDIN.
-In that case Auto-run will dump the contents of Scintilla to a temp file.
-
-Known examples: cmake-format
-
 
 Known issues
 ============

@@ -16,137 +16,127 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <geanyplugin.h>
 #include "autorun.h"
 #include "utils.h"
+#include <geanyplugin.h>
 
 AUTORUN_GLOBALS* autorun_globals;
 
-
-AUTORUN_CMD* autorun_cmd_new(){
-	AUTORUN_CMD* cmd=NULL;
-	cmd=g_new0(AUTORUN_CMD,1);
-	cmd->file_type=NULL;
-	cmd->interceptor=NULL;
-	cmd->command=NULL;
-	cmd->working_dir=NULL;
-	cmd->invalid=TRUE;
-	cmd->order=0;
+AUTORUN_CMD* autorun_cmd_new() {
+	AUTORUN_CMD* cmd = NULL;
+	cmd = g_new0(AUTORUN_CMD, 1);
+	cmd->file_type = NULL;
+	cmd->interceptor = NULL;
+	cmd->command = NULL;
+	cmd->working_dir = NULL;
+	cmd->invalid = TRUE;
+	cmd->order = 0;
 	return cmd;
 }
 
-void autorun_cmd_free(AUTORUN_CMD* cmd){
-		/* do not check for cmd->invalid because it could be a partial command
-		 * or invalidated after assembly. */
-		if(cmd==NULL){
-			//who are you and why are you in my attic?
-			return;
-		}
-		//free the command
-		if(cmd->file_type !=NULL){
-			cmd->file_type=NULL;
-		}
-		if(cmd->interceptor !=NULL){
-			g_free(cmd->interceptor);
-			cmd->interceptor=NULL;
-		}
-		if(cmd->command !=NULL){
-			g_free(cmd->command);
-			cmd->command=NULL;
-		}
-		if(cmd->working_dir !=NULL)
-		{
-			g_free(cmd->working_dir);
-			cmd->working_dir=NULL;
-		}
-}
-
-void autorun_cmd_list_free(GSList* command_list){
-		if(command_list==NULL){
-			//why are you naked?
-			return;
-		}
-		g_message ("command list had %i" ,g_slist_length(command_list));
-		g_slist_free_full(command_list,(GDestroyNotify)autorun_cmd_free);
-}
-
-void autorun_globals_init(GeanyPlugin* plugin)
-{
-	if(!autorun_globals || autorun_globals==NULL){
-		autorun_globals = g_new0(AUTORUN_GLOBALS,1);
-		autorun_globals->plugin=plugin;
-		autorun_globals->data=plugin->geany_data;
-		autorun_globals->filedef_commands=NULL;
-		autorun_globals->project_commands=NULL;
+void autorun_cmd_free(AUTORUN_CMD* cmd) {
+	/* do not check for cmd->invalid because it could be a partial command
+	 * or invalidated after assembly. */
+	if (cmd == NULL) {
+		// who are you and why are you in my attic?
+		return;
+	}
+	// free the command
+	if (cmd->file_type != NULL) {
+		cmd->file_type = NULL;
+	}
+	if (cmd->interceptor != NULL) {
+		g_free(cmd->interceptor);
+		cmd->interceptor = NULL;
+	}
+	if (cmd->command != NULL) {
+		g_free(cmd->command);
+		cmd->command = NULL;
+	}
+	if (cmd->working_dir != NULL) {
+		g_free(cmd->working_dir);
+		cmd->working_dir = NULL;
 	}
 }
 
-void autorun_globals_free(void)
-{
-	if(autorun_globals!=NULL){
-		if(autorun_globals->filedef_commands!=NULL)
-		{
+void autorun_cmd_list_free(GSList* command_list) {
+	if (command_list == NULL) {
+		// why are you naked?
+		return;
+	}
+	g_message("command list had %i", g_slist_length(command_list));
+	g_slist_free_full(command_list, (GDestroyNotify)autorun_cmd_free);
+}
+
+void autorun_globals_init(GeanyPlugin* plugin) {
+	if (!autorun_globals || autorun_globals == NULL) {
+		autorun_globals = g_new0(AUTORUN_GLOBALS, 1);
+		autorun_globals->plugin = plugin;
+		autorun_globals->data = plugin->geany_data;
+		autorun_globals->filedef_commands = NULL;
+		autorun_globals->project_commands = NULL;
+	}
+}
+
+void autorun_globals_free(void) {
+	if (autorun_globals != NULL) {
+		if (autorun_globals->filedef_commands != NULL) {
 			autorun_cmd_list_free(autorun_globals->filedef_commands);
-			autorun_globals->filedef_commands=NULL;
+			autorun_globals->filedef_commands = NULL;
 		}
-		if(autorun_globals->project_commands!=NULL)
-		{
+		if (autorun_globals->project_commands != NULL) {
 			autorun_cmd_list_free(autorun_globals->project_commands);
-			autorun_globals->project_commands=NULL;
+			autorun_globals->project_commands = NULL;
 		}
-		autorun_globals->data=NULL;
-		autorun_globals->plugin=NULL;
+		autorun_globals->data = NULL;
+		autorun_globals->plugin = NULL;
 		g_free(autorun_globals);
-		autorun_globals=NULL;
+		autorun_globals = NULL;
 	}
 }
 
-void load_filedefs(void)
-{
+void load_filedefs(void) {
 	// if there are any filetypes.FILE autorun sections
-	gchar * filedef_path = g_build_path(G_DIR_SEPARATOR_S, autorun_globals->data->app->configdir, GEANY_FILEDEFS_SUBDIR, NULL); 
+	gchar* filedef_path = g_build_path(G_DIR_SEPARATOR_S, autorun_globals->data->app->configdir, GEANY_FILEDEFS_SUBDIR, NULL);
 	guint filedef_len;
-	GSList * file_list = utils_get_file_list(filedef_path, &filedef_len, NULL);
-	if( filedef_len > 0){
+	GSList* file_list = utils_get_file_list(filedef_path, &filedef_len, NULL);
+	if (filedef_len > 0) {
 		// stash filetypes.FILE to fallback on-project-close
-		GSList* node=NULL;
-		foreach_slist(node,file_list){
-			if( g_str_has_prefix(node->data, "filetypes.") && g_strcmp0(node->data, "filetypes.README")!=0 )
-			{
-				//we have files to process
+		GSList* node = NULL;
+		foreach_slist(node, file_list) {
+			if (g_str_has_prefix(node->data, "filetypes.") && g_strcmp0(node->data, "filetypes.README") != 0) {
+				// we have files to process
 				gsize key_len;
-				gchar * filedef_file = g_build_filename(G_DIR_SEPARATOR_S, filedef_path, (gchar*)node->data, NULL);
-				GKeyFile* config=g_key_file_new ();
-				g_key_file_load_from_file(config,filedef_file ,G_KEY_FILE_NONE, NULL);
-				GError * gerr=NULL;
+				gchar* filedef_file = g_build_filename(G_DIR_SEPARATOR_S, filedef_path, (gchar*)node->data, NULL);
+				GKeyFile* config = g_key_file_new();
+				g_key_file_load_from_file(config, filedef_file, G_KEY_FILE_NONE, NULL);
+				GError* gerr = NULL;
 				gchar** handlers = g_key_file_get_keys(config, "autorun", &key_len, &gerr);
-				//if the keyfile has an [autorun] section
-				if( gerr == NULL ){
-					g_message("found %s autorun",(gchar*)node->data);
+				// if the keyfile has an [autorun] section
+				if (gerr == NULL) {
+					g_message("found %s autorun", (gchar*)node->data);
 					gchar** handler_key;
-					foreach_strv( handler_key, handlers){
+					foreach_strv(handler_key, handlers) {
 						g_message(" %s", *handler_key);
-						if(g_str_has_suffix(*handler_key,"CM")){
+						if (g_str_has_suffix(*handler_key, "CM")) {
 							AUTORUN_CMD* cmd = autorun_cmd_new();
-							cmd->file_type=filetypes_detect_from_file(node->data);
-							g_message ("filetype was %s", filetypes_get_display_name(cmd->file_type));
-							parse_intercept_actions(*handler_key, config, cmd );
-							if(!cmd->invalid){
-								//add the command
+							cmd->file_type = filetypes_detect_from_file(node->data);
+							g_message("filetype was %s", filetypes_get_display_name(cmd->file_type));
+							parse_intercept_actions(*handler_key, config, cmd);
+							if (!cmd->invalid) {
+								// add the command
 								autorun_globals->filedef_commands = g_slist_prepend(autorun_globals->filedef_commands, cmd);
-								g_message ("filedef list is %i" ,g_slist_length(autorun_globals->filedef_commands));
+								g_message("filedef list is %i", g_slist_length(autorun_globals->filedef_commands));
 
-							}
-							else{
-								//free the command
+							} else {
+								// free the command
 								autorun_cmd_free(cmd);
 							}
 						}
 					}
-					//flip it around
+					// flip it around
 					autorun_globals->filedef_commands = g_slist_reverse(autorun_globals->filedef_commands);
-				}else
-				{
+				} else {
 					g_free(gerr);
 				}
 				g_free(filedef_file);
@@ -154,44 +144,43 @@ void load_filedefs(void)
 			}
 		}
 	}
-	
-	//cleanup
-	g_slist_foreach(file_list, (GFunc) g_free, NULL);
+
+	// cleanup
+	g_slist_foreach(file_list, (GFunc)g_free, NULL);
 	g_slist_free(file_list);
 	g_free(filedef_path);
 }
 
-void load_projectdefs(GKeyFile* config){
+void load_projectdefs(GKeyFile* config) {
 	gsize key_len;
-	GError * gerr=NULL;
+	GError* gerr = NULL;
 	gchar** handlers = g_key_file_get_keys(config, "autorun", &key_len, &gerr);
-	//if the keyfile has an [autorun] section
-	if( gerr==NULL ){
+	// if the keyfile has an [autorun] section
+	if (gerr == NULL) {
 		g_message("found project autorun");
 		gchar** handler_key;
-		//load any handlers
-		foreach_strv( handler_key, handlers){
-			//over any existing [autorun] handlers
+		// load any handlers
+		foreach_strv(handler_key, handlers) {
+			// over any existing [autorun] handlers
 			g_message(" %s", *handler_key);
-			if(g_str_has_suffix(*handler_key,"CM")){
+			if (g_str_has_suffix(*handler_key, "CM")) {
 				AUTORUN_CMD* cmd = autorun_cmd_new();
-				parse_intercept_actions(*handler_key, config, cmd );
-				if(!cmd->invalid){
-					//add the command
-					autorun_globals->project_commands = g_slist_prepend (autorun_globals->project_commands, cmd);
-				}
-				else{
-					//free the command
+				parse_intercept_actions(*handler_key, config, cmd);
+				if (!cmd->invalid) {
+					// add the command
+					autorun_globals->project_commands = g_slist_prepend(autorun_globals->project_commands, cmd);
+				} else {
+					// free the command
 					autorun_cmd_free(cmd);
 				}
 			}
 		}
-		//flip it around
+		// flip it around
 		autorun_globals->project_commands = g_slist_reverse(autorun_globals->project_commands);
-		g_message ("proj command list is %i" ,g_slist_length(autorun_globals->project_commands));
-	}else{
+		g_message("proj command list is %i", g_slist_length(autorun_globals->project_commands));
+	} else {
 		g_free(gerr);
 	}
-	//The caller of g_key_file_get_keys takes ownership of the returned data, and is responsible for freeing it.
+	// The caller of g_key_file_get_keys takes ownership of the returned data, and is responsible for freeing it.
 	g_free(handlers);
 }
