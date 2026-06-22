@@ -89,7 +89,6 @@ Auto-run replacements
 
 Auto-run supports the following replacements in CM and WD
 %f - the basename of the file being saved.
-%e - the basename but without the last extension.
 %d - the absolute path of the directory of the file being saved.
 %p - the absolute path of the base directory of the currently open project.
 

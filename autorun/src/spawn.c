@@ -16,8 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 #include <geanyplugin.h>
+#include <glib/gstdio.h>
 #include "spawn.h"
 #include "autorun.h" 
+#include "utils.h"
+
  
 void dispatch_run(const gchar * interceptor, GeanyDocument *doc)
 {
@@ -48,7 +51,6 @@ void dispatch_run(const gchar * interceptor, GeanyDocument *doc)
 	g_message ("command list in %s %i" ,interceptor,g_slist_length(command_list));
 	if(g_slist_length(command_list)>0){
 		//now if there are any cmds in scope, honor order
-		
 		GSList* meh[g_slist_length(command_list)]= {};
 		foreach_slist(elem, command_list){
 			AUTORUN_CMD*cmd =((AUTORUN_CMD*)elem->data);
@@ -61,10 +63,150 @@ void dispatch_run(const gchar * interceptor, GeanyDocument *doc)
 				break;//stop on the first null;
 			}
 			AUTORUN_CMD* cmd=(AUTORUN_CMD*)meh[i]->data;
-			g_message("Run %s in %s # %i", cmd->command, cmd->working_dir, cmd->order );
+
+			//prep replacements.
+			gchar* target_dir;
+			if(doc->real_path!=NULL){
+				target_dir = g_path_get_dirname(doc->real_path);
+			}else{
+				//where else but here?
+				target_dir = g_strdup(".");
+			}
+			gchar* target_projdir;
+			if(autorun_globals->data->app->project!=NULL && autorun_globals->data->app->project->base_path!=NULL){
+				target_projdir=utils_get_locale_from_utf8(autorun_globals->data->app->project->base_path);
+			}
+			else{
+				//fold %p to %d if no project.
+				target_projdir = g_strdup(target_dir);
+			}
+			gchar* target_file=NULL;
+			GFile* tmpfile= NULL;
+			GFileIOStream* iostream=NULL;
+			gboolean success= FALSE;
+			gchar* before_contents;
+			//we need scintilla in a buffer regardless of %f
+			gint con_len = sci_get_length(doc->editor->sci);
+			g_message("SCI is %i long", con_len);
+			before_contents = sci_get_contents(doc->editor->sci, con_len);
+
+			if(g_strcmp0(interceptor,"BS")==0 && (g_strrstr(cmd->command,"%f") || g_strrstr(cmd->working_dir,"%f") )){
+				//%f means something special
+				tmpfile= g_file_new_tmp("ar.aXXXXXX", &iostream, NULL);
+				if(tmpfile!=NULL){
+					target_file = g_file_get_path(tmpfile);
+					g_message("dumpinging temp to %s", target_file);
+					success = g_file_replace_contents( tmpfile, before_contents ,con_len ,NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION,NULL,NULL,NULL );
+				}else{
+					success=FALSE;
+				}
+			}else{
+				//%f just means file.
+				success=TRUE;
+				target_file = utils_get_locale_from_utf8(doc->file_name);
+			}
+
+			//do the replacement bits
+			//replace %f
+			GString* command  = g_string_new(cmd->command);
+			g_string_replace(command, "%f",target_file,0);
+			GString* working_dir  = g_string_new(cmd->working_dir);
+			g_string_replace(working_dir, "%f",target_file,0);
+			
+			//replace %d
+			g_string_replace(command, "%d",target_dir,0);
+			g_string_replace(working_dir, "%d",target_dir,0);
+			
+			//replace %p
+			g_string_replace(command, "%p",target_projdir,0);
+			g_string_replace(working_dir, "%p",target_projdir,0);
+			
+			//it looks like we're running;
+			SpawnWriteData* stdin_data;
+			GString * stdout_data=g_string_new(NULL);
+			GString * stderr_data=g_string_new(NULL);
+			if(success){
+				g_message("Run %s",command->str);
+				g_message(" in %s # %i",  working_dir->str, cmd->order );
+
+				if(g_strcmp0(interceptor,"BS")==0 && success && tmpfile==NULL ){
+					//need to send stdin.
+					stdin_data=g_new0(SpawnWriteData,1);
+					stdin_data->ptr = before_contents;
+				}
+				else{
+					//no stdin
+					stdin_data=NULL;
+				}
+				gchar **env;
+				env = utils_copy_environment(NULL,
+                "GEANY_FUNCNAME", __func__,
+				NULL);
+				GError* error=NULL;
+				success = spawn_sync(working_dir->str,command->str,NULL, env, stdin_data, stdout_data, stderr_data, NULL, &error);
+				g_strfreev(env);
+				if(!success){
+					//somewhat bad had occur
+					msgwin_status_add("Command failed with %s", error->message);
+					ui_set_statusbar(FALSE,"Auto-run %s interceptor failed.",interceptor);
+					g_error_free(error);
+				}
+			}else{
+				g_message("Failed somewhere before me");
+			}
+
+			//if we made a tmpfile, grab the results and del the file.
+			if(success && tmpfile!=NULL){
+				gchar* read=NULL;
+				g_file_get_contents(target_file,&read,NULL,NULL);
+				if (read!=NULL){
+					g_message("read was goodish");
+					//TODO when this is working remove this conditional.
+					if(g_strcmp0(read,before_contents)==0){
+						g_message("Its fine");
+					}else{
+						g_message("EVERYTHING ON FIRE");
+					}
+					//sci_set_text(doc->editor->sci,contents);
+					g_free(read);
+				}else{
+					g_message("read was nullish");
+				}
+			}
+			else if(success && g_strcmp0(interceptor,"BS")==0)
+			{
+				//update scintilla from the spawn.
+				//sci_set_text(doc->editor->sci,spawn_results);
+			}
+			
+
+
+			if(tmpfile!=NULL){
+				g_unlink(target_file);
+			}
+
+			g_string_free(stdout_data,TRUE);
+			g_string_free(stderr_data,TRUE);
+
+
+			if(stdin_data!=NULL){
+				g_free(stdin_data);
+			}
+
+			if(before_contents!=NULL){
+				g_free(before_contents);
+			}
+		
+			g_string_free(working_dir,TRUE);
+			g_string_free(command,TRUE);
+			g_free(target_dir);
+			g_free(target_projdir);
+			if(target_file!=NULL){
+				g_free(target_file);
+			}
 		}
 	}
-
+ 
 	g_slist_free(command_list);
 }
 

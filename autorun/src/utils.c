@@ -17,9 +17,7 @@
  */
 
 #include <geanyplugin.h>
-#include <glib.h>
 #include <spawn.h>
-
 #include "utils.h"
 #include "autorun.h"
 
@@ -49,7 +47,6 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 		//strv of 3 is filedef, 4 is project
 			case 3:{
 				g_message("processing filedef!");
-				g_message("type is null? %s", (cmd->file_type ==NULL)?"true":"false");
 				g_message("filetype already %s", filetypes_get_display_name(cmd->file_type));
 				g_message("interceptor %s",tokens[0]);
 				g_message("order %s",tokens[1]);
@@ -129,13 +126,3 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 	
 	return cmd->invalid;
 }
-
-/* invoke mktemp() in a crossplatformy way */
-void autorun_make_temp(gchar*)
-{
-	//g_get_tmp_dir()
-	//g_chdir()
-	//sg_mkstemp()
-}
-
-

@@ -55,14 +55,16 @@ g_message("project close end");
 /* Handler to run any applicable Auto-run configs after a write*/
 void on_doc_save(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc, G_GNUC_UNUSED gpointer user_data){
 g_message("on save start");
-	/* disabled because geany/geany#4604 never sets doc->changed*/
+	/* disabled because geany/geany#4604 never sets doc->changed
 	if(!doc->changed)
 	{
 		g_message("doc not changed?");
 		return;
 	}
-	/**/
+	*/
+	ui_progress_bar_start(NULL);
 	dispatch_run("OS", doc);
+	ui_progress_bar_stop();
 g_message("on save end");
 }
 
@@ -75,7 +77,9 @@ g_message("before save start");
 		g_message("doc not changed?");
 		return;
 	}
+	ui_progress_bar_start(NULL);
 	dispatch_run("BS", doc);
+	ui_progress_bar_stop();
 g_message("before save end");
 }
 
@@ -110,6 +114,7 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 	g_message("autorun_init end");
 	return TRUE;
 }
+
 
 /* ensure destruction of any Auto-run objects */
 static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
