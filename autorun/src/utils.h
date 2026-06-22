@@ -18,9 +18,10 @@
 #ifndef __AUTORUN_UTILS_H__
 #define __AUTORUN_UTILS_H__
 
-#include <geanyplugin.h> 
+#include <geanyplugin.h>
 
 #include "autorun.h"
+
 gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd);
 
-#endif
+#endif 

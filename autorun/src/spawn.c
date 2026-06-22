@@ -15,11 +15,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#include "spawn.h"
-#include "autorun.h"
-#include "utils.h"
+
 #include <geanyplugin.h>
 #include <glib/gstdio.h>
+
+#include "autorun.h"
+#include "spawn.h"
+#include "utils.h"
 
 void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 	g_message("dispatch_run %%f %s", doc->file_name);
@@ -160,14 +162,10 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 						g_file_get_contents(target_file, &read, NULL, NULL);
 						if (read != NULL) {
 							g_message("read was goodish");
-							// TODO when this is working remove this conditional.
-							if (g_strcmp0(read, before_contents) == 0) {
-								g_message("Temp no change");
-							} else {
-								g_message("Temp changed");
-								msgwin_compiler_add_string(COLOR_BLACK, read);
+							if (g_strcmp0(read, before_contents) != 0) {
+								// no point in stealing the document focus
+								sci_set_text(doc->editor->sci, read);
 							}
-							// sci_set_text(doc->editor->sci,contents);
 							g_free(read);
 						} else {
 							g_message("read was nullish");
@@ -206,11 +204,4 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 		}
 	}
 	g_slist_free(command_list);
-}
-
-gboolean run_command(AUTORUN_CMD* cmd) {
-	if (cmd->invalid) {
-		return FALSE;
-	}
-	return TRUE;
 }

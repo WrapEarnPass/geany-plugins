@@ -104,7 +104,8 @@ CBS_00_CM = fancyformatter %f
 
 Autorun will run fancyformatter before save for C files as long as project.geany is open.
 
-All Auto-run actions will target the Geany Terminal pane.
+All Auto-run action status changes will be in the Geany Status window.
+All Auto-run errors will be in the Geany Compiler status window.
 
 Known issues
 ============

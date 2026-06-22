@@ -16,10 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "utils.h"
-#include "autorun.h"
 #include <geanyplugin.h>
 #include <spawn.h>
+
+#include "autorun.h"
+#include "utils.h"
 
 /* Read a filedef or keyfile for Intercept Actions
  * @param action key (should end with CM)

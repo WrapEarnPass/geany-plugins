@@ -15,12 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
- 
+
 #ifndef __AUTORUN_SPAWN_H__
 #define __AUTORUN_SPAWN_H__
-#include <geanyplugin.h>
-#include "autorun.h"
-gboolean run_command(AUTORUN_CMD* cmd);
-void dispatch_run(const gchar * interceptor, GeanyDocument *doc);
 
-#endif
+#include <geanyplugin.h>
+
+#include "autorun.h"
+
+void dispatch_run(const gchar* interceptor, GeanyDocument* doc);
+
+#endif 
