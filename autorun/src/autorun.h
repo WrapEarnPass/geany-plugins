@@ -47,4 +47,5 @@ AUTORUN_CMD* autorun_cmd_new(void);
 void load_filedefs(void);
 void load_projectdefs(GKeyFile* config);
 
-#endif 
+#endif
+
