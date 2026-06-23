@@ -253,8 +253,7 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 				}
 
 				if (tmpfile) {
-					// TODO unlink the temp file after testing passes
-					//  g_unlink(target_file);
+					g_unlink(target_file);
 					g_object_unref(tmpfile);
 				}
 
