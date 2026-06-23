@@ -30,40 +30,35 @@
  * */
 gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd) {
 	// key should be a (filetype_)action_number_flag string
-	if (key == NULL || cmd == NULL) {
+	if (!key || !cmd) {
 		return FALSE;
 	}
 	// is this a key?
-	if (g_strstr_len(key, -1, "_") == NULL) {
+	if (!g_strstr_len(key, -1, "_")) {
 		// no
 		cmd->invalid = TRUE;
 		return FALSE;
 	}
+	cmd->invalid = FALSE;
 	// what is this key?
 	gchar** tokens;
 	tokens = g_strsplit(key, "_", 4);
-	gboolean invalid = FALSE;
 
 	switch (g_strv_length(tokens)) {
 		// strv of 3 is filedef, 4 is project
 	case 3: {
-		g_message("processing filedef!");
-		g_message("filetype already %s", filetypes_get_display_name(cmd->file_type));
-		g_message("interceptor %s", tokens[0]);
-		g_message("order %s", tokens[1]);
-		g_message("flag %s", tokens[2]);
 		// the caller has to set filetype
 		if (g_strcmp0(tokens[0], "BS") == 0) {
 			cmd->interceptor = g_strdup(tokens[0]);
 		} else if (g_strcmp0(tokens[0], "OS") == 0) {
 			cmd->interceptor = g_strdup(tokens[0]);
 		} else {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		}
 
 		gint offset = atoi(tokens[1]);
 		if (offset < 0 || offset > 99) {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		} else {
 			cmd->order = offset;
 		}
@@ -74,18 +69,11 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 			cmd->working_dir = utils_get_setting_string(key_file, "autorun", next_key, "");
 			g_free(next_key);
 		} else {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		}
-		cmd->invalid = invalid;
 		break;
 	}
 	case 4: {
-		g_message("processing project!");
-		g_message("filetype %s", tokens[0]);
-		g_message("interceptor %s", tokens[1]);
-		g_message("order %s", tokens[2]);
-		g_message("flag %s", tokens[3]);
-
 		cmd->file_type = filetypes_lookup_by_name(tokens[0]);
 
 		if (g_strcmp0(tokens[1], "BS") == 0) {
@@ -93,12 +81,12 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 		} else if (g_strcmp0(tokens[1], "OS") == 0) {
 			cmd->interceptor = g_strdup(tokens[1]);
 		} else {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		}
 
 		gint offset = atoi(tokens[2]);
 		if (offset < 0 || offset > 99) {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		} else {
 			cmd->order = offset;
 		}
@@ -110,13 +98,12 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 			cmd->working_dir = utils_get_setting_string(key_file, "autorun", next_key, "");
 			g_free(next_key);
 		} else {
-			invalid = TRUE;
+			cmd->invalid = TRUE;
 		}
-		cmd->invalid = invalid;
 		break;
 	}
 	default: {
-		invalid = TRUE;
+		cmd->invalid = TRUE;
 	}
 	}
 
