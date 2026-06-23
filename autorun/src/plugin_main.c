@@ -20,6 +20,7 @@
 #include <gtk/gtk.h>
 
 #include "autorun.h"
+#include "menu.h"
 #include "spawn.h"
 
 /* Handler to read any Project declared Auto-run configs */
@@ -110,6 +111,7 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 			g_free(config);
 		}
 	}
+	menu_init();
 	return TRUE;
 }
 
@@ -118,6 +120,7 @@ static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
 	if (autorun_globals) {
 		autorun_globals_free();
 	}
+	menu_cleanup();
 }
 
 G_MODULE_EXPORT
