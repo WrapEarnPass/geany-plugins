@@ -116,11 +116,11 @@ static void on_project_dialog_confirm(G_GNUC_UNUSED GObject* obj, GtkWidget* not
 	// mark the config for reload
 	autorun_globals->dirtybit = TRUE;
 	// hide from the Build menu
-	project_hide_properties_tab(notebook);
+	// project_hide_properties_tab(notebook);
 }
 static void on_project_dialog_close(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
 	// hide from the Build menu
-	project_hide_properties_tab(notebook);
+	// project_hide_properties_tab(notebook);
 }
 
 // clang-format off

@@ -90,8 +90,8 @@ void project_save_properties_tab(GKeyFile* config) {
 }
 
 void project_hide_properties_tab(GtkWidget* notebook) {
-	gtk_notebook_detach_tab(GTK_NOTEBOOK(notebook), project_data.tab);
-	project_data.notebook = NULL;
+	// gtk_notebook_detach_tab(GTK_NOTEBOOK(notebook), project_data.tab);
+	// project_data.notebook = NULL;
 }
 
 void project_show_properties_tab(GtkWidget* notebook) {
@@ -99,6 +99,8 @@ void project_show_properties_tab(GtkWidget* notebook) {
 	if (g_strcmp0("None", document_get_current()->file_type->name) == 0 || !autorun_globals->data->app->project) {
 		// Auto-run only supports file specific handlers
 		// hide the tab
+		gtk_notebook_detach_tab(GTK_NOTEBOOK(notebook), project_data.tab);
+		project_data.notebook = NULL;
 		return;
 	}
 
