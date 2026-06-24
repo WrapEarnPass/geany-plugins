@@ -25,4 +25,3 @@
 gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd);
 
 #endif
-

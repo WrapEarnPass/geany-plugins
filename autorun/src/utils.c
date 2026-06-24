@@ -17,7 +17,6 @@
  */
 
 #include <geanyplugin.h>
-#include <spawn.h>
 
 #include "autorun.h"
 #include "utils.h"
@@ -64,6 +63,11 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 		}
 		if (g_strcmp0(tokens[2], "CM") == 0) {
 			cmd->command = utils_get_setting_string(key_file, "autorun", key, "");
+			if (strlen(cmd->command) < 2) {
+				// GKeyFile doesnt actually delete keys, but sets them to ""
+				cmd->invalid = TRUE;
+				break;
+			}
 			gchar* next_key;
 			next_key = g_strconcat(tokens[0], "_", tokens[1], "_", "WD", NULL);
 			cmd->working_dir = utils_get_setting_string(key_file, "autorun", next_key, "");

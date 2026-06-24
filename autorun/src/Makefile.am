@@ -8,7 +8,8 @@ autorun_la_SOURCES = \
 	autorun.c \
 	utils.c \
 	spawn.c \
-	menu.c
+	menu.c \
+	project.c
 
 autorun_la_CPPFLAGS = $(AM_CPPFLAGS) \
 	-DG_LOG_DOMAIN=\"Autorun\"

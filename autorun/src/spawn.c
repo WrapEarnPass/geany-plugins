@@ -133,7 +133,7 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 				gint ret;
 				GError* error = NULL;
 				SpawnWriteData* stdin_data;
-				if (g_strcmp0(interceptor, "BS") == 0 && success && !tmpfile) {
+				if (g_strcmp0(interceptor, "BS") == 0 && !tmpfile) {
 					// need to send stdin.
 					stdin_data = g_new0(SpawnWriteData, 1);
 					stdin_data->ptr = before_contents;
@@ -275,7 +275,7 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			} else {
 				// cant assemble this command, don't try again
 				cmd->invalid = TRUE;
-				msgwin_status_add(_("Cannot parse command %s"), command->str);
+				msgwin_status_add(_("Cannot parse command '%s'"), command->str);
 			}
 		}
 	}

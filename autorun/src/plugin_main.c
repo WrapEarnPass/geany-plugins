@@ -21,7 +21,9 @@
 
 #include "autorun.h"
 #include "menu.h"
+#include "project.h"
 #include "spawn.h"
+#include "utils.h"
 
 /* Handler to read any Project declared Auto-run configs */
 static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
@@ -32,9 +34,13 @@ static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC
 
 // this handler is currently disconnected due to geany/geany#4603
 /* Handler to read any Project declared Auto-run configs */
-// static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data){
-//	load_projectdefs(config);
-// }
+static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
+	// write notebook to .geany keyfile
+	// has to be here, and not project-dialog-confirmed because Geany manages the write to the GKeyFile
+	project_save_properties_tab(config);
+	// ensure any changes from the project config are picked up before the next execution
+	autorun_globals->dirtybit = TRUE;
+}
 
 /* Handler to clear any old Project declared Auto-run configs */
 static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer user_data) {
@@ -45,12 +51,18 @@ static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer 
 
 /* Handler to run any applicable Auto-run configs after a write*/
 static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
-	/* disabled because geany/geany#4604 never sets doc->changed
-	if(!doc->changed)
-	{
-		return;
+	// make sure we update the projectdefs if the config is dirty
+	if (autorun_globals->dirtybit) {
+		// reload the projectdefs
+		GKeyFile* config = g_key_file_new();
+		gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+		if (ret) {
+			load_projectdefs(config);
+		}
+		g_key_file_free(config);
+		autorun_globals->dirtybit = FALSE;
 	}
-	*/
+
 	if (sci_get_length(doc->editor->sci) < 1) {
 		// no point in processing a file so short
 		return;
@@ -68,6 +80,18 @@ static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_U
 
 /* Handler to run any applicable Auto-run configs before a write*/
 static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
+	// make sure we update the projectdefs if the config is dirty
+	if (autorun_globals->dirtybit) {
+		// reload the projectdefs
+		GKeyFile* config = g_key_file_new();
+		gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+		if (ret) {
+			load_projectdefs(config);
+		}
+		g_key_file_free(config);
+		autorun_globals->dirtybit = FALSE;
+	}
+
 	if (!doc->changed) {
 		return;
 	}
@@ -84,14 +108,31 @@ static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G
 	dispatch_run("BS", doc);
 	ui_progress_bar_stop();
 }
+static void on_project_dialog_open(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
+	// populate notebook for current file type.
+	project_show_properties_tab(notebook);
+}
+static void on_project_dialog_confirm(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
+	// mark the config for reload
+	autorun_globals->dirtybit = TRUE;
+	// hide from the Build menu
+	project_hide_properties_tab(notebook);
+}
+static void on_project_dialog_close(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
+	// hide from the Build menu
+	project_hide_properties_tab(notebook);
+}
 
 // clang-format off
 PluginCallback plugin_callbacks[] = {
 	{ "project-open", (GCallback)&on_project_open, TRUE, NULL },
-	//{ "project-save", (GCallback)&on_project_save, TRUE, NULL },// geany/geany#4603
+	{ "project-save", (GCallback)&on_project_save, TRUE, NULL },
 	{ "project-close", (GCallback)&on_project_close, TRUE, NULL },
 	{ "document-save", (GCallback)&on_doc_save, TRUE, NULL },
 	{ "document-before-save", (GCallback)&on_doc_before_save, TRUE, NULL },
+	{ "project-dialog-open", (GCallback) & on_project_dialog_open, FALSE, NULL},
+	{ "project-dialog-confirmed", (GCallback) & on_project_dialog_confirm, TRUE, NULL},
+	{ "project-dialog-close", (GCallback) & on_project_dialog_close, TRUE, NULL},
 	{ NULL, NULL, FALSE, NULL }
 };
 // clang-format on
@@ -102,16 +143,18 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 		autorun_globals_init(plugin);
 		load_filedefs();
 
-		// if initialized while a project is already open, manually ingest the project
-		if (autorun_globals->data->app && autorun_globals->data->app->project) {
-			// force a GKeyFile
+		if (autorun_globals->data->app->project) {
+			// if initialized while a project is already open, manually ingest the project
 			GKeyFile* config = g_key_file_new();
-			g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
-			load_projectdefs(config);
-			g_free(config);
+			gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+			if (ret) {
+				load_projectdefs(config);
+			}
+			g_key_file_free(config);
 		}
 	}
 	menu_init();
+	project_properties_tab_init();
 	return TRUE;
 }
 
@@ -121,6 +164,7 @@ static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
 		autorun_globals_free();
 	}
 	menu_cleanup();
+	project_properties_tab_cleanup();
 }
 
 G_MODULE_EXPORT

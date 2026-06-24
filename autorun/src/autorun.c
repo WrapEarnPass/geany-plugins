@@ -75,6 +75,7 @@ void autorun_globals_init(GeanyPlugin* plugin) {
 		autorun_globals->data = plugin->geany_data;
 		autorun_globals->filedef_commands = NULL;
 		autorun_globals->project_commands = NULL;
+		autorun_globals->dirtybit = FALSE;
 	}
 }
 
@@ -120,6 +121,7 @@ void load_filedefs(void) {
 							AUTORUN_CMD* cmd = autorun_cmd_new();
 							cmd->file_type = filetypes_detect_from_file(node->data);
 							parse_intercept_actions(*handler_key, config, cmd);
+
 							if (!cmd->invalid) {
 								// add the command
 								autorun_globals->filedef_commands = g_slist_prepend(autorun_globals->filedef_commands, cmd);
@@ -134,6 +136,7 @@ void load_filedefs(void) {
 				} else {
 					g_free(gerr);
 				}
+				g_key_file_free(config);
 				g_free(filedef_file);
 				g_free(handlers);
 			}

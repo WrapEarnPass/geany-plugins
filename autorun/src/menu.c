@@ -20,6 +20,7 @@
 
 #include "autorun.h"
 #include "menu.h"
+#include "utils.h"
 
 typedef struct {
 	GtkWidget* menu;
@@ -40,14 +41,13 @@ static void autorun_menu_reload_cb(G_GNUC_UNUSED GtkMenuItem* menuitem, G_GNUC_U
 	// load filedefs
 	load_filedefs();
 	// load project
-	if (autorun_globals->data->app && autorun_globals->data->app->project) {
+	GKeyFile* config = g_key_file_new();
+	gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+	if (ret) {
 		msgwin_status_add(_("Reloading Auto-run project configs"));
-		// force a GKeyFile
-		GKeyFile* config = g_key_file_new();
-		g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
 		load_projectdefs(config);
-		g_free(config);
 	}
+	g_key_file_free(config);
 }
 
 /** Setup the workbench menu.
@@ -81,4 +81,11 @@ gboolean menu_init(void) {
 /** Cleanup menu data/mem.
  *
  **/
-void menu_cleanup(void) { gtk_widget_destroy(menu_data.root_item); }
+void menu_cleanup(void) {
+	gtk_widget_destroy(GTK_WIDGET(menu_data.item_reload));
+	menu_data.item_reload = NULL;
+	gtk_widget_destroy(GTK_WIDGET(menu_data.root_item));
+	menu_data.root_item = NULL;
+	// since this is attached to main_widgets, attempting to destroy it creates an assertion error
+	menu_data.menu = NULL;
+}

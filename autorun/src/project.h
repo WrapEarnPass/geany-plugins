@@ -16,36 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __AUTORUN_H__
-#define __AUTORUN_H__
+#ifndef __AUTORUN_PROJECT_H__
+#define __AUTORUN_PROJECT_H__
 
 #include <geanyplugin.h>
 
-typedef struct {
-	GeanyPlugin* plugin;
-	GeanyData* data;
-	GSList* filedef_commands;
-	GSList* project_commands;
-	gboolean dirtybit;
-} AUTORUN_GLOBALS;
+#include "autorun.h"
 
-typedef struct {
-	GeanyFiletype* file_type;
-	gchar* interceptor;
-	gushort order;
-	gchar* command;
-	gchar* working_dir;
-	gboolean invalid;
-} AUTORUN_CMD;
+void project_save_properties_tab(GKeyFile* config);
+void project_show_properties_tab(GtkWidget* notebook);
+void project_hide_properties_tab(GtkWidget* notebook);
+void project_properties_tab_cleanup(void);
+void project_properties_tab_init(void);
 
-extern AUTORUN_GLOBALS* autorun_globals;
-
-void autorun_globals_init(GeanyPlugin* plugin);
-void autorun_globals_free(void);
-void autorun_cmd_list_free(GSList* command_list);
-void autorun_cmd_free(AUTORUN_CMD* cmd);
-AUTORUN_CMD* autorun_cmd_new(void);
-void load_filedefs(void);
-void load_projectdefs(GKeyFile* config);
-
-#endif
+#endif 
