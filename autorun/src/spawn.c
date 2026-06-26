@@ -196,6 +196,7 @@ void dispatch_run_async(GeanyDocument* doc) {
 	GSList* runnables = NULL;
 	parse_command("OS", doc, &runnables);
 	GSList* runnable;
+	ui_progress_bar_start("Auto-run");
 	foreach_slist(runnable, runnables) {
 		// convenience
 		AUTORUN_CMD* current_cmd = (AUTORUN_CMD*)runnable->data;
@@ -216,7 +217,7 @@ void dispatch_run_async(GeanyDocument* doc) {
 		GPid* child_pid = NULL;
 		gboolean success = FALSE;
 		ui_set_statusbar(FALSE, _("Auto-run running %s"), current_cmd->command);
-		ui_progress_bar_start("Auto-run");
+
 		++autorun_globals->children;
 		success = spawn_with_callbacks(current_cmd->working_dir, current_cmd->command, NULL, env, SPAWN_ASYNC | SPAWN_LINE_BUFFERED, NULL, NULL, stdio_cb, stdout_data, 0,
 																	 stdio_cb, stderr_data, 0, stdioend_cb, end_data, child_pid, &error);
