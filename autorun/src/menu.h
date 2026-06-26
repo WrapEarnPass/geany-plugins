@@ -22,4 +22,4 @@
 gboolean menu_init(void);
 void menu_cleanup(void);
 
-#endif 
+#endif

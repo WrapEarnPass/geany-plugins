@@ -22,8 +22,24 @@
 #include "autorun.h"
 #include "spawn.h"
 #include "utils.h"
+//
+// if (spawn_async(working_dir, locale_term_cmd, NULL, NULL, &(run_info[cmdindex].pid), &error)) {
+// g_child_watch_add(run_info[cmdindex].pid, (GChildWatchFunc)run_exit_cb, (gpointer) & (run_info[cmdindex]));
+// build_menu_update(doc);
+//}
 
-void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
+/*
+ * Build the @interceptor from @autorun_globals, and return the parsed command to @command
+ * If the parsed command creates a tempfile, return it in cmd->interceptor
+ * */
+
+typedef struct {
+	GString* stdout;
+	GString* stderr;
+	GeanyDocument* doc;
+
+} AUTORUN_ASYNC_DATA;
+static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList** command) {
 	GSList* command_list = NULL;
 
 	// build the commands backwads
@@ -78,9 +94,6 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			gchar* before_contents;
 
 			// we need scintilla in a buffer regardless of %a
-			gint con_len = sci_get_length(doc->editor->sci);
-			gint cursor_at = sci_get_current_position(doc->editor->sci);
-			before_contents = sci_get_contents(doc->editor->sci, con_len);
 
 			if (g_strcmp0(interceptor, "BS") == 0 && g_strrstr(cmd->command, "%a")) {
 				//%a means something special
@@ -90,7 +103,10 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 					g_io_stream_close((GIOStream*)iostream, NULL, NULL);
 					target_file = g_file_get_path(tmpfile);
 					// remove the trailing \0 on write
+					gint con_len = sci_get_length(doc->editor->sci);
+					before_contents = sci_get_contents(doc->editor->sci, con_len);
 					success = g_file_set_contents_full(target_file, before_contents, con_len - 1, G_FILE_SET_CONTENTS_CONSISTENT, 0660, NULL);
+					g_free(before_contents);
 
 				} else {
 					success = FALSE;
@@ -104,132 +120,218 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			// do the replacement bits
 			gchar* target_name = g_path_get_basename(target_file);
 
-			GString* command = g_string_new(cmd->command);
+			GString* command_str = g_string_new(cmd->command);
 			// replace %f
-			g_string_replace(command, "%f", target_name, 0);
+			g_string_replace(command_str, "%f", target_name, 0);
 			// replace %a
-			g_string_replace(command, "%a", target_file, 0);
+			g_string_replace(command_str, "%a", target_file, 0);
 
-			GString* working_dir = g_string_new(cmd->working_dir);
+			GString* working_dir_str = g_string_new(cmd->working_dir);
 			// replace %d
-			g_string_replace(command, "%d", target_dir, 0);
-			g_string_replace(working_dir, "%d", target_dir, 0);
+			g_string_replace(command_str, "%d", target_dir, 0);
+			g_string_replace(working_dir_str, "%d", target_dir, 0);
 
 			// replace %p
-			g_string_replace(command, "%p", target_projdir, 0);
-			g_string_replace(working_dir, "%p", target_projdir, 0);
+			g_string_replace(command_str, "%p", target_projdir, 0);
+			g_string_replace(working_dir_str, "%p", target_projdir, 0);
 
 			if (success) {
-				success = spawn_check_command(command->str, TRUE, NULL);
+				success = spawn_check_command(command_str->str, TRUE, NULL);
 			}
-			// it looks like we're running;
-
 			if (success) {
-				gchar** env;
-				env = utils_copy_environment(NULL, "GEANY_FUNCNAME", __func__, NULL);
-				gint ret;
-				GError* error = NULL;
-				GString* stdout_data = g_string_new(NULL);
-				GString* stderr_data = g_string_new(NULL);
-				SpawnWriteData* stdin_data;
-				if (g_strcmp0(interceptor, "BS") == 0 && !tmpfile) {
-					// need to send stdin.
-					stdin_data = g_new0(SpawnWriteData, 1);
-					stdin_data->ptr = before_contents;
-					stdin_data->size = con_len;
-				} else {
-					// no stdin
-					stdin_data = NULL;
-				}
-
-				gchar* status_msg = g_strdup_printf("Running %s (from %s)", command->str, working_dir->str);
-				msgwin_compiler_add_string(COLOR_BLUE, status_msg);
-				g_free(status_msg);
-				// runnit
-				success = spawn_sync(working_dir->str, command->str, NULL, env, stdin_data, stdout_data, stderr_data, &ret, &error);
-				if (stdin_data) {
-					g_free(stdin_data);
-				}
-				// cleanup anything we dont need in processing.
-				g_strfreev(env);
-				g_free(target_name);
-				g_free(target_dir);
-				g_free(target_projdir);
-
-				if (success && ret == 0) {
-					// ran and didn't throw an error
-					// do we need to update the editor?
-					if (g_strcmp0(interceptor, "BS") == 0) {
-						// maybe.
-						// could be in tmpfile, stdout
-						gchar* read_tmp = NULL;
-						if (tmpfile) {
-							g_file_get_contents(target_file, &read_tmp, NULL, NULL);
-						}
-						// check for the stupid case
-						if (strlen(stdout_data->str) > 0 && tmpfile && g_strcmp0(read_tmp, before_contents) != 0 && g_strcmp0(stdout_data->str, read_tmp) != 0) {
-							// if there are changes to the tempfile AND stdout
-							// this command is stupid. there is no way to know
-							// which output is the output to output.
-							msgwin_status_add(_("Command failed with inconsistant output."));
-						} else if (strlen(stdout_data->str) > 0) {
-							sci_set_text(doc->editor->sci, stdout_data->str);
-							sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
-						} else if (tmpfile && g_strcmp0(read_tmp, before_contents) != 0) {
-							sci_set_text(doc->editor->sci, read_tmp);
-							// no point in stealing the document focus
-							sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
-						}
-						if (read_tmp) {
-							g_free(read_tmp);
-						}
-					}
-					// dont update the editor if it ran with an error.
-				} else if (!success) {
-					// refused to run
-					msgwin_status_add(_("Command failed with %s"), error->message);
-					ui_set_statusbar(FALSE, _("%s interceptor failed."), interceptor);
-					g_error_free(error);
-					// invalid command, don't process it again.
-					cmd->invalid = TRUE;
-				}
-
-				// GUI output formatting?
-				// stdout
-				// BS stdout goes to the scintilla editor
-				if (g_strcmp0(interceptor, "BS") != 0 && strlen(stdout_data->str) > 0) {
-					parse_output(stdout_data->str);
-				}
-
-				// stderr
-				if (strlen(stderr_data->str) > 0) {
-					parse_output(stderr_data->str);
-				}
-
+				// attach this command to the outgoing GSList
+				AUTORUN_CMD* cmdout = autorun_cmd_new();
+				cmdout->command = g_string_free_and_steal(command_str);
+				cmdout->working_dir = g_string_free_and_steal(working_dir_str);
 				if (tmpfile) {
-					g_unlink(target_file);
-					g_object_unref(tmpfile);
+					cmdout->interceptor = g_strdup(target_file);
+				} else {
+					cmdout->interceptor = NULL;
 				}
-				if (target_file) {
-					g_free(target_file);
-				}
-
-				g_string_free(stdout_data, TRUE);
-				g_string_free(stderr_data, TRUE);
-
-				if (before_contents) {
-					g_free(before_contents);
-				}
-
-				g_string_free(working_dir, TRUE);
-				g_string_free(command, TRUE);
+				cmdout->invalid = FALSE;
+				*command = g_slist_append(*command, cmdout);
 			} else {
 				// cant assemble this command, don't try again
 				cmd->invalid = TRUE;
-				msgwin_status_add(_("Cannot parse command '%s'"), command->str);
+				msgwin_status_add(_("Cannot parse command '%s'"), command_str->str);
 			}
+			// cleanup
+			g_free(target_dir);
+			g_free(target_projdir);
+			if (tmpfile) {
+				g_object_unref(tmpfile);
+			}
+			g_free(target_file);
+		}
+		// cleanup
+		// autorun_cmd_list_free(command_list);
+		// we dont own the contents of command_list.
+		g_slist_free(command_list);
+	}
+}
+
+static void stdio_cb(GString* string, GIOCondition condition, gpointer data) {
+	// dup the string to data.
+	if (condition == G_IO_IN || condition == G_IO_PRI) {
+		g_string_append((GString*)data, string->str);
+	}
+}
+
+static void stdioend_cb(GPid pid, gint wait_status, gpointer user_data) {
+	AUTORUN_ASYNC_DATA* exit_data = (AUTORUN_ASYNC_DATA*)user_data;
+	parse_output(exit_data->stdout->str);
+	g_string_free(exit_data->stdout, TRUE);
+	parse_output(exit_data->stderr->str);
+	g_string_free(exit_data->stderr, TRUE);
+	g_free(exit_data);
+	if (--autorun_globals->children < 1) {
+		ui_progress_bar_stop();
+		ui_set_statusbar(FALSE, _("Auto-run finished %s"), exit_data->doc->file_name);
+		autorun_globals->children = 0;
+	}
+}
+
+// prefer running commands async, so the editor plays nice
+void dispatch_run_async(GeanyDocument* doc) {
+	GSList* runnables = NULL;
+	parse_command("OS", doc, &runnables);
+	GSList* runnable;
+	foreach_slist(runnable, runnables) {
+		// convenience
+		AUTORUN_CMD* current_cmd = (AUTORUN_CMD*)runnable->data;
+
+		gchar** env;
+		env = utils_copy_environment(NULL, "GEANY_FUNCNAME", __func__, NULL);
+		GError* error = NULL;
+
+		gchar* status_msg = g_strdup_printf(_("Running %s (from %s)"), current_cmd->command, current_cmd->working_dir);
+		msgwin_compiler_add_string(COLOR_BLUE, status_msg);
+		g_free(status_msg);
+		GString* stdout_data = g_string_new(NULL);
+		GString* stderr_data = g_string_new(NULL);
+		AUTORUN_ASYNC_DATA* end_data = g_new0(AUTORUN_ASYNC_DATA, 1);
+		end_data->stdout = stdout_data;
+		end_data->stderr = stderr_data;
+		end_data->doc = doc;
+		GPid* child_pid = NULL;
+		gboolean success = FALSE;
+		ui_set_statusbar(FALSE, _("Auto-run running %s"), current_cmd->command);
+		ui_progress_bar_start("Auto-run");
+		++autorun_globals->children;
+		success = spawn_with_callbacks(current_cmd->working_dir, current_cmd->command, NULL, env, SPAWN_ASYNC | SPAWN_LINE_BUFFERED, NULL, NULL, stdio_cb, stdout_data, 0,
+																	 stdio_cb, stderr_data, 0, stdioend_cb, end_data, child_pid, &error);
+
+		// cleanup anything we dont need in processing.
+		g_strfreev(env);
+
+		if (!success) {
+			if (--autorun_globals->children < 1) {
+				ui_progress_bar_stop();
+				autorun_globals->children = 0;
+			}
+			//  refused to run
+			msgwin_status_add(_("Command failed with %s"), error->message);
+			g_error_free(error);
 		}
 	}
+	autorun_cmd_list_free(runnables);
+}
 
-	g_slist_free(command_list);
+// this should only ever be for interceptor=BS, as it locks up the editor
+void dispatch_run_sync(GeanyDocument* doc) {
+	GSList* runnables = NULL;
+	parse_command("BS", doc, &runnables);
+	GSList* runnable;
+	foreach_slist(runnable, runnables) {
+		// convienience
+		AUTORUN_CMD* current_cmd = (AUTORUN_CMD*)runnable->data;
+		// pull the tempfile from the overloaded cmd->interceptor
+		gboolean has_tmpfile = (current_cmd->interceptor) ? TRUE : FALSE;
+		gchar* tmpfile_path = current_cmd->interceptor;
+
+		gchar** env;
+		env = utils_copy_environment(NULL, "GEANY_FUNCNAME", __func__, NULL);
+		gint ret;
+		GError* error = NULL;
+		GString* stdout_data = g_string_new(NULL);
+		GString* stderr_data = g_string_new(NULL);
+		SpawnWriteData* stdin_data;
+
+		gint con_len = sci_get_length(doc->editor->sci);
+		gchar* before_contents = sci_get_contents(doc->editor->sci, con_len);
+		if (!has_tmpfile) {
+			// need to send stdin.
+			stdin_data = g_new0(SpawnWriteData, 1);
+			stdin_data->ptr = before_contents;
+			stdin_data->size = con_len;
+		} else {
+			// no stdin
+			stdin_data = NULL;
+		}
+		gchar* status_msg = g_strdup_printf(_("Running %s (from %s)"), current_cmd->command, current_cmd->working_dir);
+		msgwin_compiler_add_string(COLOR_BLUE, status_msg);
+		g_free(status_msg);
+		// runnit
+		gboolean success = spawn_sync(current_cmd->working_dir, current_cmd->command, NULL, env, stdin_data, stdout_data, stderr_data, &ret, &error);
+		if (stdin_data) {
+			g_free(stdin_data);
+		}
+		// cleanup anything we dont need in processing.
+		g_strfreev(env);
+
+		if (success && ret == 0) {
+			// ran and didn't throw an error
+			// do we need to update the editor?
+			// maybe.
+			// could be in tmpfile, stdout
+			gchar* read_tmp = NULL;
+			if (has_tmpfile) {
+				g_file_get_contents(tmpfile_path, &read_tmp, NULL, NULL);
+			}
+			gint cursor_at = sci_get_current_position(doc->editor->sci);
+			// check for the stupid case
+			if (strlen(stdout_data->str) > 0 && has_tmpfile && g_strcmp0(read_tmp, before_contents) != 0 && g_strcmp0(stdout_data->str, read_tmp) != 0) {
+				// if there are changes to the tempfile AND stdout
+				// this command is stupid. there is no way to know
+				// which output is the output to output.
+				msgwin_status_add(_("Command failed with inconsistent output."));
+			} else if (strlen(stdout_data->str) > 0) {
+				sci_set_text(doc->editor->sci, stdout_data->str);
+				// put ze cursor bek
+				sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
+			} else if (has_tmpfile && g_strcmp0(read_tmp, before_contents) != 0) {
+				sci_set_text(doc->editor->sci, read_tmp);
+				// put ze cursor bek
+				sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
+			}
+			if (read_tmp) {
+				g_free(read_tmp);
+			}
+			// dont update the editor if it ran with an error.
+		} else if (!success) {
+			// refused to run
+			msgwin_status_add(_("Command failed with %s"), error->message);
+			ui_set_statusbar(FALSE, _("Auto-run before-save interceptor failed."));
+			g_error_free(error);
+		}
+
+		// GUI output formatting?
+		// BS stdout goes to the scintilla editor
+		// stderr
+		if (strlen(stderr_data->str) > 0) {
+			parse_output(stderr_data->str);
+		}
+
+		if (has_tmpfile) {
+			g_unlink(tmpfile_path);
+		}
+
+		g_string_free(stdout_data, TRUE);
+		g_string_free(stderr_data, TRUE);
+
+		if (before_contents) {
+			g_free(before_contents);
+		}
+	}
+	autorun_cmd_list_free(runnables);
 }

@@ -29,4 +29,4 @@ void project_hide_properties_tab(GtkWidget* notebook);
 void project_properties_tab_cleanup(void);
 void project_properties_tab_init(void);
 
-#endif 
+#endif

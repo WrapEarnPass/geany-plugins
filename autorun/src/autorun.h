@@ -27,6 +27,7 @@ typedef struct {
 	GSList* filedef_commands;
 	GSList* project_commands;
 	gboolean dirtybit;
+	gint children;
 } AUTORUN_GLOBALS;
 
 typedef struct {

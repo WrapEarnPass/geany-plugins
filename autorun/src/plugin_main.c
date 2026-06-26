@@ -67,15 +67,13 @@ static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_U
 		// no point in processing a file so short
 		return;
 	}
-	ui_progress_bar_start(NULL);
 	/*
 	 * dont reset the msgwin here, as document-save
 	 * is the second stage of document-before-save
 	 * and the messages will all be logically related
 	 * to the user selecting File>Save
 	 */
-	dispatch_run("OS", doc);
-	ui_progress_bar_stop();
+	dispatch_run_async(doc);
 }
 
 /* Handler to run any applicable Auto-run configs before a write*/
@@ -99,12 +97,12 @@ static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G
 		// no point in processing a file so short
 		return;
 	}
-	ui_progress_bar_start(NULL);
 	// status is used for return codes, so dont clear that one
 	// compiler is used for all output
 	msgwin_clear_tab(MSG_COMPILER);
-	dispatch_run("BS", doc);
-	ui_progress_bar_stop();
+	dispatch_run_sync(doc);
+	// no point in ui_progress_bar here, as
+	// sync processes lock Geany up until they finish
 }
 static void on_project_dialog_open(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
 	// populate notebook for current file type.

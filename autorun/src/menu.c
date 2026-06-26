@@ -26,8 +26,8 @@ typedef struct {
 	GtkWidget* menu;
 	GtkWidget* root_item;
 	GtkWidget* item_reload;
-} AR_MENU_DATA;
-static AR_MENU_DATA menu_data;
+} AUTORUN_MENU_DATA;
+static AUTORUN_MENU_DATA menu_data;
 
 /* The function handles the menu item "Reload" */
 static void autorun_menu_reload_cb(G_GNUC_UNUSED GtkMenuItem* menuitem, G_GNUC_UNUSED gpointer user_data) {

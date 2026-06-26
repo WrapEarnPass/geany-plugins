@@ -28,8 +28,8 @@ typedef struct {
 	GtkWidget* before_save_workdir;
 	GtkWidget* on_save_command;
 	GtkWidget* on_save_workdir;
-} AR_PROJECT_DATA;
-static AR_PROJECT_DATA project_data;
+} AUTORUN_PROJECT_DATA;
+static AUTORUN_PROJECT_DATA project_data;
 
 void project_save_properties_tab(GKeyFile* config) {
 	// grab the current filetype

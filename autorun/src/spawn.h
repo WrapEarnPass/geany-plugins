@@ -23,6 +23,7 @@
 
 #include "autorun.h"
 
-void dispatch_run(const gchar* interceptor, GeanyDocument* doc);
+void dispatch_run_async(GeanyDocument* doc);
+void dispatch_run_sync(GeanyDocument* doc);
 
 #endif

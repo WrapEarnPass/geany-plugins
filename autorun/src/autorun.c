@@ -76,6 +76,7 @@ void autorun_globals_init(GeanyPlugin* plugin) {
 		autorun_globals->filedef_commands = NULL;
 		autorun_globals->project_commands = NULL;
 		autorun_globals->dirtybit = FALSE;
+		autorun_globals->children = 0;
 	}
 }
 

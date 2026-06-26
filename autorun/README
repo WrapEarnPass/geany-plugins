@@ -109,7 +109,8 @@ All Auto-run output will be in the Geany Compiler status window.
 Known issues
 ============
 
-Auto-run does not support forking, any commands will synchronously (spawn_sync).
+Auto-run runs before-save targets synchronously. This may cause Geany to freeze.
+	Move slow commands to on-save to run asynchronously.
 geany/geany#4603 impacts reloading the Project configs in realtime.
 	Tools>Auto-run>Reload will force a reload.
 Compiler won't follow links unless at least one Build command has run.
