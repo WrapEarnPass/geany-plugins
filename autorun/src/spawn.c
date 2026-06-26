@@ -81,7 +81,8 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			gint con_len = sci_get_length(doc->editor->sci);
 			gint cursor_at = sci_get_current_position(doc->editor->sci);
 			before_contents = sci_get_contents(doc->editor->sci, con_len);
-			if (g_strcmp0(interceptor, "BS") == 0 && (g_strrstr(cmd->command, "%a") || g_strrstr(cmd->working_dir, "%a"))) {
+
+			if (g_strcmp0(interceptor, "BS") == 0 && g_strrstr(cmd->command, "%a")) {
 				//%a means something special
 				tmpfile = g_file_new_tmp("ar.aXXXXXX", &iostream, NULL);
 				if (tmpfile) {
@@ -102,16 +103,14 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 
 			// do the replacement bits
 			gchar* target_name = g_path_get_basename(target_file);
-			// replace %f
-			GString* command = g_string_new(cmd->command);
-			g_string_replace(command, "%f", target_name, 0);
-			GString* working_dir = g_string_new(cmd->working_dir);
-			g_string_replace(working_dir, "%f", target_name, 0);
 
+			GString* command = g_string_new(cmd->command);
+			// replace %f
+			g_string_replace(command, "%f", target_name, 0);
 			// replace %a
 			g_string_replace(command, "%a", target_file, 0);
-			g_string_replace(working_dir, "%a", target_file, 0);
 
+			GString* working_dir = g_string_new(cmd->working_dir);
 			// replace %d
 			g_string_replace(command, "%d", target_dir, 0);
 			g_string_replace(working_dir, "%d", target_dir, 0);
@@ -121,17 +120,17 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			g_string_replace(working_dir, "%p", target_projdir, 0);
 
 			if (success) {
-				success = spawn_check_command(command->str, FALSE, NULL);
+				success = spawn_check_command(command->str, TRUE, NULL);
 			}
 			// it looks like we're running;
 
-			GString* stdout_data = g_string_new(NULL);
-			GString* stderr_data = g_string_new(NULL);
 			if (success) {
 				gchar** env;
 				env = utils_copy_environment(NULL, "GEANY_FUNCNAME", __func__, NULL);
 				gint ret;
 				GError* error = NULL;
+				GString* stdout_data = g_string_new(NULL);
+				GString* stderr_data = g_string_new(NULL);
 				SpawnWriteData* stdin_data;
 				if (g_strcmp0(interceptor, "BS") == 0 && !tmpfile) {
 					// need to send stdin.
@@ -142,119 +141,77 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 					// no stdin
 					stdin_data = NULL;
 				}
+
+				gchar* status_msg = g_strdup_printf("Running %s (from %s)", command->str, working_dir->str);
+				msgwin_compiler_add_string(COLOR_BLUE, status_msg);
+				g_free(status_msg);
+				// runnit
 				success = spawn_sync(working_dir->str, command->str, NULL, env, stdin_data, stdout_data, stderr_data, &ret, &error);
 				if (stdin_data) {
 					g_free(stdin_data);
 				}
+				// cleanup anything we dont need in processing.
 				g_strfreev(env);
-				if (!success) {
-					// somewhat bad had occur
+				g_free(target_name);
+				g_free(target_dir);
+				g_free(target_projdir);
+
+				if (success && ret == 0) {
+					// ran and didn't throw an error
+					// do we need to update the editor?
+					if (g_strcmp0(interceptor, "BS") == 0) {
+						// maybe.
+						// could be in tmpfile, stdout
+						gchar* read_tmp = NULL;
+						if (tmpfile) {
+							g_file_get_contents(target_file, &read_tmp, NULL, NULL);
+						}
+						// check for the stupid case
+						if (strlen(stdout_data->str) > 0 && tmpfile && g_strcmp0(read_tmp, before_contents) != 0 && g_strcmp0(stdout_data->str, read_tmp) != 0) {
+							// if there are changes to the tempfile AND stdout
+							// this command is stupid. there is no way to know
+							// which output is the output to output.
+							msgwin_status_add(_("Command failed with inconsistant output."));
+						} else if (strlen(stdout_data->str) > 0) {
+							sci_set_text(doc->editor->sci, stdout_data->str);
+							sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
+						} else if (tmpfile && g_strcmp0(read_tmp, before_contents) != 0) {
+							sci_set_text(doc->editor->sci, read_tmp);
+							// no point in stealing the document focus
+							sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
+						}
+						if (read_tmp) {
+							g_free(read_tmp);
+						}
+					}
+					// dont update the editor if it ran with an error.
+				} else if (!success) {
+					// refused to run
 					msgwin_status_add(_("Command failed with %s"), error->message);
 					ui_set_statusbar(FALSE, _("%s interceptor failed."), interceptor);
 					g_error_free(error);
-					// invalid command
+					// invalid command, don't process it again.
 					cmd->invalid = TRUE;
-				} else {
-					// if we made a tmpfile, grab the results and del the file.
-					if (tmpfile) {
-						if (ret == 0) {
-							gchar* read = NULL;
-							g_file_get_contents(target_file, &read, NULL, NULL);
-							if (read) {
-								if (g_strcmp0(read, before_contents) != 0) {
-									// no point in stealing the document focus
-									sci_set_text(doc->editor->sci, read);
-									sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
-								}
-								// maybe it put the output in stdout.
-								if (strlen(stdout_data->str) > 0) {
-									sci_set_text(doc->editor->sci, stdout_data->str);
-									sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
-								}
-								g_free(read);
-							}
-						} else {
-							msgwin_status_add(_("%s ran but returned an error."), command->str);
-							// parse out a linenumber, assuming the stdout data is file:line:col
-							gchar* lineptr = g_strstr_len(stdout_data->str, 255, ":");
-							gint linenum = 1;
-							if (lineptr) {
-								lineptr++; // skip the colon
-								linenum = atoi(lineptr);
-								if (linenum == 0) {
-									linenum = 1;
-								}
-							}
-							msgwin_msg_add(COLOR_BLACK, linenum, doc, "%s", stdout_data->str);
-							if (strlen(stderr_data->str) > 0) {
-								msgwin_compiler_add_string(COLOR_BLACK, stderr_data->str);
-							}
-						}
-					} else if (g_strcmp0(interceptor, "BS") == 0) {
-						// we spawned a child, but that child might have successfully failed.
-						if (ret == 0) {
-							sci_set_text(doc->editor->sci, stdout_data->str);
-							sci_set_current_position(doc->editor->sci, cursor_at, TRUE);
-							if (strlen(stderr_data->str) > 0) {
-								msgwin_compiler_add_string(COLOR_BLACK, stderr_data->str);
-							}
-						} else {
-							msgwin_status_add(_("%s ran but returned an error."), command->str);
-							gchar* lineptr = g_strstr_len(stdout_data->str, 255, ":");
-							gint linenum = 1;
-							if (lineptr) {
-								lineptr++; // skip the colon
-								linenum = atoi(lineptr);
-								if (linenum == 0) {
-									linenum = 1;
-								}
-							}
-							msgwin_msg_add(COLOR_BLACK, linenum, doc, "%s", stdout_data->str);
-							if (strlen(stderr_data->str) > 0) {
-								msgwin_compiler_add_string(COLOR_BLACK, stderr_data->str);
-							}
-						}
-					} else if (g_strcmp0(interceptor, "OS") == 0) {
-						// we spawned a child, but that child might have successfully failed.
-						if (ret == 0) {
-							// parse out a linenumber, assuming the stdout data is file:line:col
-							gchar* lineptr = g_strstr_len(stdout_data->str, 255, ":");
-							gint linenum = 1;
-							if (lineptr) {
-								lineptr++; // skip the colon
-								linenum = atoi(lineptr);
-								if (linenum == 0) {
-									linenum = 1;
-								}
-							}
+				}
 
-							msgwin_msg_add(COLOR_BLACK, linenum, doc, "%s", stdout_data->str);
-							if (strlen(stderr_data->str) > 0) {
-								msgwin_compiler_add_string(COLOR_BLACK, stderr_data->str);
-							}
-						} else {
-							msgwin_status_add(_("%s ran but returned an error."), command->str);
-							// parse out a linenumber, assuming the stdout data is file:line:col
-							gchar* lineptr = g_strstr_len(stdout_data->str, 255, ":");
-							gint linenum = 1;
-							if (lineptr) {
-								lineptr++; // skip the colon
-								linenum = atoi(lineptr);
-								if (linenum == 0) {
-									linenum = 1;
-								}
-							}
-							msgwin_msg_add(COLOR_BLACK, linenum, doc, "%s", stdout_data->str);
-							if (strlen(stderr_data->str) > 0) {
-								msgwin_compiler_add_string(COLOR_BLACK, stderr_data->str);
-							}
-						}
-					}
+				// GUI output formatting?
+				// stdout
+				// BS stdout goes to the scintilla editor
+				if (g_strcmp0(interceptor, "BS") != 0 && strlen(stdout_data->str) > 0) {
+					parse_output(stdout_data->str);
+				}
+
+				// stderr
+				if (strlen(stderr_data->str) > 0) {
+					parse_output(stderr_data->str);
 				}
 
 				if (tmpfile) {
 					g_unlink(target_file);
 					g_object_unref(tmpfile);
+				}
+				if (target_file) {
+					g_free(target_file);
 				}
 
 				g_string_free(stdout_data, TRUE);
@@ -266,12 +223,6 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 
 				g_string_free(working_dir, TRUE);
 				g_string_free(command, TRUE);
-				g_free(target_name);
-				g_free(target_dir);
-				g_free(target_projdir);
-				if (target_file) {
-					g_free(target_file);
-				}
 			} else {
 				// cant assemble this command, don't try again
 				cmd->invalid = TRUE;
@@ -279,5 +230,6 @@ void dispatch_run(const gchar* interceptor, GeanyDocument* doc) {
 			}
 		}
 	}
+
 	g_slist_free(command_list);
 }

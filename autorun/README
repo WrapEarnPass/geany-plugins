@@ -104,15 +104,15 @@ CBS_00_CM = fancyformatter %f
 
 Autorun will run fancyformatter before save for C files as long as project.geany is open.
 
-All Auto-run action status changes will be in the Geany Status window.
-All Auto-run errors will be in the Geany Compiler status window.
+All Auto-run output will be in the Geany Compiler status window.
 
 Known issues
 ============
 
 Auto-run does not support forking, any commands will synchronously (spawn_sync).
-geany/geany#4603 prevents reloading the Project configs in realtime.
-	unload and reload the Plugin from Plugin manager as a workaround.
+geany/geany#4603 impacts reloading the Project configs in realtime.
+	Tools>Auto-run>Reload will force a reload.
+Compiler won't follow links unless at least one Build command has run.
 
 License
 =======

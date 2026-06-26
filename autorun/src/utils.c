@@ -24,19 +24,17 @@
 /* Read a filedef or keyfile for Intercept Actions
  * @param action key (should end with CM)
  * @param key_file to get remaining values from
- * @return true if parsing worked
- * 				false is parsing failed
  * */
-gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd) {
+void parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd) {
 	// key should be a (filetype_)action_number_flag string
 	if (!key || !cmd) {
-		return FALSE;
+		return;
 	}
 	// is this a key?
 	if (!g_strstr_len(key, -1, "_")) {
 		// no
 		cmd->invalid = TRUE;
-		return FALSE;
+		return;
 	}
 	cmd->invalid = FALSE;
 	// what is this key?
@@ -112,6 +110,53 @@ gboolean parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cm
 	}
 
 	g_strfreev(tokens);
+}
 
-	return cmd->invalid;
+// split stdout and stderr into
+// blocks and shove them into the correct tabs
+void parse_output(gchar* input) {
+	// make sure we're using utf8
+	gchar* output = encodings_convert_to_utf8(input, -1, NULL);
+	// split the output on \n
+	gchar** lines = g_regex_split_simple("\\n", output, 0, G_REGEX_MATCH_NEWLINE_ANY);
+	gchar** line = NULL;
+
+	// foreach line, if it contains a filename, it is red.
+	foreach_strv(line, lines) {
+		guint i;
+		gboolean found = FALSE;
+		GeanyData* geany_data = autorun_globals->data;
+		foreach_document(i) {
+			GeanyDocument* doc_test = documents[i];
+			gchar* locale_name = utils_get_locale_from_utf8(doc_test->file_name);
+			gchar* base_test = g_path_get_basename(locale_name);
+			if (g_strrstr(*line, base_test)) {
+				// contains a known filename
+				found = TRUE;
+				break;
+			}
+			if (locale_name) {
+				g_free(locale_name);
+			}
+			if (base_test) {
+				g_free(base_test);
+			}
+		}
+		// make known filenames clicky (perhaps)
+		//  the compiler requires each newline to be its own message
+		//  or the compiler clicky breaks.
+		//  the compiler requires each clicky to be RED
+		//  or the compiler clicky breaks.
+		if (found) {
+			msgwin_compiler_add_string(COLOR_RED, *line);
+		} else {
+			msgwin_compiler_add_string(COLOR_BLACK, *line);
+		}
+	}
+
+	line = NULL;
+	g_strfreev(lines);
+	if (output) {
+		g_free(output);
+	}
 }

@@ -101,9 +101,7 @@ static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G
 	}
 	ui_progress_bar_start(NULL);
 	// status is used for return codes, so dont clear that one
-	// messages is used for stdout
-	msgwin_clear_tab(MSG_MESSAGE);
-	// compiler is used for stderr
+	// compiler is used for all output
 	msgwin_clear_tab(MSG_COMPILER);
 	dispatch_run("BS", doc);
 	ui_progress_bar_stop();

@@ -26,4 +26,3 @@
 void dispatch_run(const gchar* interceptor, GeanyDocument* doc);
 
 #endif
-
