@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.27)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/lib/geany")
 
 project(
   autorun
@@ -9,6 +10,15 @@ project(
   LANGUAGES C
   DESCRIPTION "Geany action interceptor plugin")
 
+set(CMAKE_C_FLAGS "-Wall")
+set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
+
+set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_CXX_FLAGS_DEBUG "-g" )
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+add_compile_definitions(LOCALEDIR="/usr/share/locale")
 # the `pkg_check_modules` function is created with this call
 find_package(PkgConfig REQUIRED)
 # these calls create special `PkgConfig::<MODULE>` variables

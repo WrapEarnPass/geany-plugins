@@ -21,6 +21,7 @@
 #include "project.h"
 #include "utils.h"
 
+// container for GtkWidget references
 typedef struct {
 	GtkWidget* notebook;
 	GtkWidget* tab;
@@ -31,6 +32,8 @@ typedef struct {
 } AUTORUN_PROJECT_DATA;
 static AUTORUN_PROJECT_DATA project_data;
 
+/* callback to save changes to the Project to disk
+ * config keyfile provided by Geany */
 void project_save_properties_tab(GKeyFile* config) {
 	// grab the current filetype
 	if (!document_get_current()) {
@@ -89,11 +92,15 @@ void project_save_properties_tab(GKeyFile* config) {
 	g_free(os_wd_key);
 }
 
+/* ensure that the Project>Auto-run is hidden when not in use
+ * notebook a reference to Project Properties from Geany */
 void project_hide_properties_tab(GtkWidget* notebook) {
 	gtk_notebook_detach_tab(GTK_NOTEBOOK(notebook), project_data.tab);
 	project_data.notebook = NULL;
 }
 
+/* ensure that the Project>Auto-run is shown when needed
+ * notebook a reference to Project Properties from Geany */
 void project_show_properties_tab(GtkWidget* notebook) {
 	// grab the current filetype
 	if (g_strcmp0("None", document_get_current()->file_type->name) == 0 || !autorun_globals->data->app->project) {
@@ -157,6 +164,7 @@ void project_show_properties_tab(GtkWidget* notebook) {
 	g_key_file_free(config);
 }
 
+/* Gtk teardown for Auto-run tab */
 void project_properties_tab_cleanup(void) {
 	gtk_widget_destroy(GTK_WIDGET(project_data.before_save_command));
 	project_data.before_save_command = NULL;
@@ -173,7 +181,9 @@ void project_properties_tab_cleanup(void) {
 	project_data.notebook = NULL;
 }
 
+/* Gtk setup for Auto-run tab */
 void project_properties_tab_init(void) {
+	// do we need to build a tab?
 	if (project_data.before_save_command) {
 		// this smells familiar, lets not.
 		return;
@@ -197,10 +207,10 @@ void project_properties_tab_init(void) {
 	gtk_size_group_add_widget(size_group, label);
 	project_data.before_save_command = gtk_entry_new();
 	ui_entry_add_clear_icon(GTK_ENTRY(project_data.before_save_command));
-	gtk_widget_set_tooltip_text(project_data.before_save_command,
-															_("supports replacements: ") _("%f = filename, ") _("%a = filename with path, ") _("%d = path, ") _("%p = project directory"));
-
-	// gtk_entry_set_text(GTK_ENTRY(e->before_save_command), str);
+	gtk_widget_set_tooltip_text(
+		project_data.before_save_command,
+		_("supports replacements: %f = filename, %a = filename with path, %d = path, %p = project directory")
+	);
 
 	ebox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 	gtk_box_pack_start(GTK_BOX(ebox), label, FALSE, FALSE, 0);
@@ -212,8 +222,10 @@ void project_properties_tab_init(void) {
 	gtk_size_group_add_widget(size_group, label);
 	project_data.before_save_workdir = gtk_entry_new();
 	ui_entry_add_clear_icon(GTK_ENTRY(project_data.before_save_workdir));
-	gtk_widget_set_tooltip_text(project_data.before_save_workdir,
-															_("supports replacements: ") _("%f = filename, ") _("%a = filename with path, ") _("%d = path, ") _("%p = project directory"));
+	gtk_widget_set_tooltip_text(
+		project_data.before_save_workdir,
+		_("supports replacements: %f = filename, %a = filename with path, %d = path, %p = project directory")
+	);
 
 	ebox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 	gtk_box_pack_start(GTK_BOX(ebox), label, FALSE, FALSE, 0);
@@ -228,8 +240,10 @@ void project_properties_tab_init(void) {
 	gtk_size_group_add_widget(size_group, label);
 	project_data.on_save_command = gtk_entry_new();
 	ui_entry_add_clear_icon(GTK_ENTRY(project_data.on_save_command));
-	gtk_widget_set_tooltip_text(project_data.on_save_command,
-															_("supports replacements: ") _("%f = filename, ") _("%a = filename with path, ") _("%d = path, ") _("%p = project directory"));
+	gtk_widget_set_tooltip_text(
+		project_data.on_save_command,
+		_("supports replacements: %f = filename, %a = filename with path, %d = path, %p = project directory")
+	);
 	ebox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 	gtk_box_pack_start(GTK_BOX(ebox), label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(ebox), project_data.on_save_command, TRUE, TRUE, 0);
@@ -239,8 +253,10 @@ void project_properties_tab_init(void) {
 	gtk_size_group_add_widget(size_group, label);
 	project_data.on_save_workdir = gtk_entry_new();
 	ui_entry_add_clear_icon(GTK_ENTRY(project_data.on_save_workdir));
-	gtk_widget_set_tooltip_text(project_data.on_save_workdir,
-															_("supports replacements: ") _("%f = filename, ") _("%a = filename with path, ") _("%d = path, ") _("%p = project directory"));
+	gtk_widget_set_tooltip_text(
+		project_data.on_save_workdir,
+		_("supports replacements: %f = filename, %a = filename with path, %d = path, %p = project directory")
+	);
 	ebox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 	gtk_box_pack_start(GTK_BOX(ebox), label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(ebox), project_data.on_save_workdir, TRUE, TRUE, 0);
@@ -254,5 +270,6 @@ void project_properties_tab_init(void) {
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_pack_start(GTK_BOX(hbox), vbox, TRUE, TRUE, 6);
 
+	// grab a reference to the new tab, so we can detach/retach later.
 	project_data.tab = GTK_WIDGET(g_object_ref(hbox));
 }

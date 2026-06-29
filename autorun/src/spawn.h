@@ -21,8 +21,6 @@
 
 #include <geanyplugin.h>
 
-#include "autorun.h"
-
 void dispatch_run_async(GeanyDocument* doc);
 void dispatch_run_sync(GeanyDocument* doc);
 

@@ -23,7 +23,6 @@
 #include "menu.h"
 #include "project.h"
 #include "spawn.h"
-#include "utils.h"
 
 /* Handler to read any Project declared Auto-run configs */
 static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
@@ -32,7 +31,6 @@ static void on_project_open(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC
 	}
 }
 
-// this handler is currently disconnected due to geany/geany#4603
 /* Handler to read any Project declared Auto-run configs */
 static void on_project_save(G_GNUC_UNUSED GObject* obj, GKeyFile* config, G_GNUC_UNUSED gpointer user_data) {
 	// write notebook to .geany keyfile
@@ -49,7 +47,7 @@ static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer 
 	autorun_globals->project_commands = NULL;
 }
 
-/* Handler to run any applicable Auto-run configs after a write*/
+/* Handler to run any applicable Auto-run configs after a write */
 static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
 	// make sure we update the projectdefs if the config is dirty
 	if (autorun_globals->dirtybit) {
@@ -76,7 +74,7 @@ static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_U
 	dispatch_run_async(doc);
 }
 
-/* Handler to run any applicable Auto-run configs before a write*/
+/* Handler to run any applicable Auto-run configs before a write */
 static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
 	// make sure we update the projectdefs if the config is dirty
 	if (autorun_globals->dirtybit) {
@@ -104,18 +102,24 @@ static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G
 	// no point in ui_progress_bar here, as
 	// sync processes lock Geany up until they finish
 }
+
+/* callback to populate Project Auto-run tab for current file type. */
 static void on_project_dialog_open(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
-	// populate notebook for current file type.
+	// attach to the Project Properties if needed
 	project_show_properties_tab(notebook);
 }
+
+/* callback to refresh Auto-run configs after Project save */
 static void on_project_dialog_confirm(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
 	// mark the config for reload
 	autorun_globals->dirtybit = TRUE;
 	// hide from the Build menu
 	project_hide_properties_tab(notebook);
 }
+/* callback to detach Auto-run tab from Project
+ * workaround for geany/geany#4606 */
 static void on_project_dialog_close(G_GNUC_UNUSED GObject* obj, GtkWidget* notebook, G_GNUC_UNUSED gpointer user_data) {
-	// hide from the Build menu
+	// detach from the Project Properties
 	project_hide_properties_tab(notebook);
 }
 
@@ -134,7 +138,7 @@ PluginCallback plugin_callbacks[] = {
 // clang-format on
 
 /* Bring up plugin and load filetypes.FILE that exist for Auto-run */
-static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
+static gboolean autorun_init(GeanyPlugin* plugin, G_GNUC_UNUSED gpointer pdata) {
 	if (!autorun_globals) {
 		autorun_globals_init(plugin);
 		load_filedefs();
@@ -155,7 +159,7 @@ static gboolean autorun_init(GeanyPlugin* plugin, gpointer pdata) {
 }
 
 /* ensure destruction of any Auto-run objects */
-static void autorun_cleanup(GeanyPlugin* plugin, gpointer pdata) {
+static void autorun_cleanup(G_GNUC_UNUSED GeanyPlugin* plugin, G_GNUC_UNUSED gpointer pdata) {
 	if (autorun_globals) {
 		autorun_globals_free();
 	}

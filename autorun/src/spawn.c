@@ -22,23 +22,19 @@
 #include "autorun.h"
 #include "spawn.h"
 #include "utils.h"
-//
-// if (spawn_async(working_dir, locale_term_cmd, NULL, NULL, &(run_info[cmdindex].pid), &error)) {
-// g_child_watch_add(run_info[cmdindex].pid, (GChildWatchFunc)run_exit_cb, (gpointer) & (run_info[cmdindex]));
-// build_menu_update(doc);
-//}
 
-/*
- * Build the @interceptor from @autorun_globals, and return the parsed command to @command
- * If the parsed command creates a tempfile, return it in cmd->interceptor
- * */
-
+// container for spawn_with_callbacks IO
 typedef struct {
 	GString* stdout;
 	GString* stderr;
 	GeanyDocument* doc;
 
 } AUTORUN_ASYNC_DATA;
+
+/* prep a command for running
+ * interceptor which command type to run
+ * doc which doc to run against
+ * command the returned prepped commands, owned by the caller */
 static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList** command) {
 	GSList* command_list = NULL;
 
@@ -91,14 +87,12 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			GFile* tmpfile = NULL;
 			GFileIOStream* iostream = NULL;
 			gboolean success = FALSE;
-			gchar* before_contents;
-
-			// we need scintilla in a buffer regardless of %a
 
 			if (g_strcmp0(interceptor, "BS") == 0 && g_strrstr(cmd->command, "%a")) {
 				//%a means something special
 				tmpfile = g_file_new_tmp("ar.aXXXXXX", &iostream, NULL);
 				if (tmpfile) {
+					gchar* before_contents;
 					// dont need the iostream, but gtk wont make a temp without it.
 					g_io_stream_close((GIOStream*)iostream, NULL, NULL);
 					target_file = g_file_get_path(tmpfile);
@@ -170,20 +164,31 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 	}
 }
 
+/* spawn_with_callbacks IO callback
+ * string the value provided by the IO
+ * condition what type of IO this was
+ * data the associated data for this callback */
 static void stdio_cb(GString* string, GIOCondition condition, gpointer data) {
 	// dup the string to data.
 	if (condition == G_IO_IN || condition == G_IO_PRI) {
 		g_string_append((GString*)data, string->str);
 	}
 }
-
-static void stdioend_cb(GPid pid, gint wait_status, gpointer user_data) {
+/* spawn_with_callbacks child exit IO callback
+ * pid child pid
+ * wait_status exit type
+ * user_data the associated data for this child */
+static void stdioend_cb(G_GNUC_UNUSED GPid pid, G_GNUC_UNUSED gint wait_status, gpointer user_data) {
+	// spawn_with_callbacks runs this last and closes the child
 	AUTORUN_ASYNC_DATA* exit_data = (AUTORUN_ASYNC_DATA*)user_data;
+	// our stdout/stderr is complete. Display it.
 	parse_output(exit_data->stdout->str);
 	g_string_free(exit_data->stdout, TRUE);
 	parse_output(exit_data->stderr->str);
 	g_string_free(exit_data->stderr, TRUE);
+	// if all the children have stopped
 	if (--autorun_globals->children < 1) {
+		// flip the ui_progress_bar back
 		ui_progress_bar_stop();
 		ui_set_statusbar(FALSE, _("Auto-run finished %s"), exit_data->doc->file_name);
 		autorun_globals->children = 0;
@@ -191,14 +196,15 @@ static void stdioend_cb(GPid pid, gint wait_status, gpointer user_data) {
 	g_free(exit_data);
 }
 
-// prefer running commands async, so the editor plays nice
+/* function to dispatch a command asynchronously
+ * doc the GeanyDocument to run against */
 void dispatch_run_async(GeanyDocument* doc) {
 	GSList* runnables = NULL;
+	// get commands in scope
 	parse_command("OS", doc, &runnables);
 	GSList* runnable;
 	ui_progress_bar_start("Auto-run");
 	foreach_slist(runnable, runnables) {
-		// convenience
 		AUTORUN_CMD* current_cmd = (AUTORUN_CMD*)runnable->data;
 
 		gchar** env;
@@ -216,9 +222,10 @@ void dispatch_run_async(GeanyDocument* doc) {
 		end_data->doc = doc;
 		GPid* child_pid = NULL;
 		gboolean success = FALSE;
+		// set the the ui_statusbar and record a child
 		ui_set_statusbar(FALSE, _("Auto-run running %s"), current_cmd->command);
-
 		++autorun_globals->children;
+
 		success = spawn_with_callbacks(current_cmd->working_dir, current_cmd->command, NULL, env, SPAWN_ASYNC | SPAWN_LINE_BUFFERED, NULL, NULL, stdio_cb, stdout_data, 0,
 																	 stdio_cb, stderr_data, 0, stdioend_cb, end_data, child_pid, &error);
 
@@ -226,11 +233,13 @@ void dispatch_run_async(GeanyDocument* doc) {
 		g_strfreev(env);
 
 		if (!success) {
+			// if that was the only child and it failed
 			if (--autorun_globals->children < 1) {
+				// flip the ui_progress_bar back
 				ui_progress_bar_stop();
 				autorun_globals->children = 0;
 			}
-			//  refused to run
+			// update status with refused to run
 			msgwin_status_add(_("Command failed with %s"), error->message);
 			g_error_free(error);
 		}
@@ -238,13 +247,15 @@ void dispatch_run_async(GeanyDocument* doc) {
 	autorun_cmd_list_free(runnables);
 }
 
-// this should only ever be for interceptor=BS, as it locks up the editor
+/* function to dispatch a command synchronously
+ * doc the GeanyDocument to run against
+ *
+ * only intended for intercept type BS, as it locks up the editor */
 void dispatch_run_sync(GeanyDocument* doc) {
 	GSList* runnables = NULL;
 	parse_command("BS", doc, &runnables);
 	GSList* runnable;
 	foreach_slist(runnable, runnables) {
-		// convienience
 		AUTORUN_CMD* current_cmd = (AUTORUN_CMD*)runnable->data;
 		// pull the tempfile from the overloaded cmd->interceptor
 		gboolean has_tmpfile = (current_cmd->interceptor) ? TRUE : FALSE;
@@ -274,17 +285,17 @@ void dispatch_run_sync(GeanyDocument* doc) {
 		g_free(status_msg);
 		// runnit
 		gboolean success = spawn_sync(current_cmd->working_dir, current_cmd->command, NULL, env, stdin_data, stdout_data, stderr_data, &ret, &error);
+
+		// cleanup anything we dont need in processing.
 		if (stdin_data) {
 			g_free(stdin_data);
 		}
-		// cleanup anything we dont need in processing.
 		g_strfreev(env);
 
 		if (success && ret == 0) {
 			// ran and didn't throw an error
 			// do we need to update the editor?
-			// maybe.
-			// could be in tmpfile, stdout
+			// could be in tmpfile, or stdout
 			gchar* read_tmp = NULL;
 			if (has_tmpfile) {
 				g_file_get_contents(tmpfile_path, &read_tmp, NULL, NULL);
@@ -292,9 +303,9 @@ void dispatch_run_sync(GeanyDocument* doc) {
 			gint cursor_at = sci_get_current_position(doc->editor->sci);
 			// check for the stupid case
 			if (strlen(stdout_data->str) > 0 && has_tmpfile && g_strcmp0(read_tmp, before_contents) != 0 && g_strcmp0(stdout_data->str, read_tmp) != 0) {
-				// if there are changes to the tempfile AND stdout
-				// this command is stupid. there is no way to know
-				// which output is the output to output.
+				/* if there are changes to the tempfile AND stdout
+				 * this command is stupid. there is no way to know
+				 * which output is the output to output. */
 				msgwin_status_add(_("Command failed with inconsistent output."));
 			} else if (strlen(stdout_data->str) > 0) {
 				sci_set_text(doc->editor->sci, stdout_data->str);
@@ -316,13 +327,14 @@ void dispatch_run_sync(GeanyDocument* doc) {
 			g_error_free(error);
 		}
 
-		// GUI output formatting?
-		// BS stdout goes to the scintilla editor
-		// stderr
+		/* GUI output formatting
+		 * stdout goes to the scintilla editor
+		 * only stderr needs processing */
 		if (strlen(stderr_data->str) > 0) {
 			parse_output(stderr_data->str);
 		}
 
+		// cleanup
 		if (has_tmpfile) {
 			g_unlink(tmpfile_path);
 		}

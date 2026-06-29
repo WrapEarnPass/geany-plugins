@@ -22,9 +22,9 @@
 #include "utils.h"
 
 /* Read a filedef or keyfile for Intercept Actions
- * @param action key (should end with CM)
- * @param key_file to get remaining values from
- * */
+ * key which interceptor to read (should end with CM)
+ * key_file to get remaining values from
+ * cmd AUTORUN_CMD struct to store data to */
 void parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd) {
 	// key should be a (filetype_)action_number_flag string
 	if (!key || !cmd) {
@@ -112,8 +112,8 @@ void parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd) {
 	g_strfreev(tokens);
 }
 
-// split stdout and stderr into
-// blocks and shove them into the correct tabs
+/* split stdout and stderr into blocks and format them for Compiler
+ * input the current data to parse */
 void parse_output(gchar* input) {
 	// make sure we're using utf8
 	gchar* output = encodings_convert_to_utf8(input, -1, NULL);
@@ -142,11 +142,11 @@ void parse_output(gchar* input) {
 				g_free(base_test);
 			}
 		}
-		// make known filenames clicky (perhaps)
-		//  the compiler requires each newline to be its own message
-		//  or the compiler clicky breaks.
-		//  the compiler requires each clicky to be RED
-		//  or the compiler clicky breaks.
+		/* make known filenames clicky (perhaps)
+		 *  the compiler requires each newline to be its own message
+		 *  or the compiler clicky breaks.
+		 *  the compiler requires each clicky to be RED
+		 *  or the compiler clicky breaks. */
 		if (found) {
 			msgwin_compiler_add_string(COLOR_RED, *line);
 		} else {

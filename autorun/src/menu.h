@@ -19,6 +19,8 @@
 #ifndef __AUTORUN_MENU_H__
 #define __AUTORUN_MENU_H__
 
+#include <geanyplugin.h>
+
 gboolean menu_init(void);
 void menu_cleanup(void);
 

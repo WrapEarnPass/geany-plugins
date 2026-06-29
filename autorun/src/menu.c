@@ -20,7 +20,6 @@
 
 #include "autorun.h"
 #include "menu.h"
-#include "utils.h"
 
 typedef struct {
 	GtkWidget* menu;
@@ -50,16 +49,14 @@ static void autorun_menu_reload_cb(G_GNUC_UNUSED GtkMenuItem* menuitem, G_GNUC_U
 	g_key_file_free(config);
 }
 
-/** Setup the workbench menu.
- *
- **/
+/* initialize the Auto-run Tool menu */
 gboolean menu_init(void) {
-	/* Create menu and root item/label */
+	// Create menu and root item/label
 	menu_data.menu = gtk_menu_new();
 	menu_data.root_item = gtk_menu_item_new_with_label("Auto-run");
 	gtk_widget_show(menu_data.root_item);
 
-	/* Create new menu item "Reload" */
+	// Create new menu item "Reload"
 	GtkWidget* icon = gtk_image_new_from_icon_name("view-refresh", GTK_ICON_SIZE_MENU);
 	/*
 	 * deprecated since gtk3.10, but it looks like crap using
@@ -78,9 +75,7 @@ gboolean menu_init(void) {
 	return TRUE;
 }
 
-/** Cleanup menu data/mem.
- *
- **/
+/* Gtk widget cleanup for Auto-run Tool menu */
 void menu_cleanup(void) {
 	gtk_widget_destroy(GTK_WIDGET(menu_data.item_reload));
 	menu_data.item_reload = NULL;

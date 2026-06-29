@@ -21,8 +21,6 @@
 
 #include <geanyplugin.h>
 
-#include "autorun.h"
-
 void project_save_properties_tab(GKeyFile* config);
 void project_show_properties_tab(GtkWidget* notebook);
 void project_hide_properties_tab(GtkWidget* notebook);

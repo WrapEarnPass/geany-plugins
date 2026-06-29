@@ -23,6 +23,8 @@
 
 AUTORUN_GLOBALS* autorun_globals;
 
+/* allocate an AUTORUN_CMD struct
+ * should be cleaned up with a matching call to autorun_cmd_free */
 AUTORUN_CMD* autorun_cmd_new() {
 	AUTORUN_CMD* cmd = NULL;
 	cmd = g_new0(AUTORUN_CMD, 1);
@@ -35,6 +37,7 @@ AUTORUN_CMD* autorun_cmd_new() {
 	return cmd;
 }
 
+/* free an AUTORUN_CMD in a safe manner */
 void autorun_cmd_free(AUTORUN_CMD* cmd) {
 	/* do not check for cmd->invalid because it could be a partial command
 	 * or invalidated after assembly. */
@@ -42,7 +45,7 @@ void autorun_cmd_free(AUTORUN_CMD* cmd) {
 		// who are you and why are you in my attic?
 		return;
 	}
-	// free the command
+	// free the command properties
 	if (cmd->file_type) {
 		cmd->file_type = NULL;
 	}
@@ -58,8 +61,11 @@ void autorun_cmd_free(AUTORUN_CMD* cmd) {
 		g_free(cmd->working_dir);
 		cmd->working_dir = NULL;
 	}
+	// and the struct itself
+	g_free(cmd);
 }
 
+/* helper to free a GSList of AUTORUN_CMD */
 void autorun_cmd_list_free(GSList* command_list) {
 	if (!command_list) {
 		// why are you naked?
@@ -68,6 +74,7 @@ void autorun_cmd_list_free(GSList* command_list) {
 	g_slist_free_full(command_list, (GDestroyNotify)autorun_cmd_free);
 }
 
+/* establish the autorun_globals */
 void autorun_globals_init(GeanyPlugin* plugin) {
 	if (!autorun_globals) {
 		autorun_globals = g_new0(AUTORUN_GLOBALS, 1);
@@ -80,6 +87,7 @@ void autorun_globals_init(GeanyPlugin* plugin) {
 	}
 }
 
+/* teardown any linked properties from autorun_globals */
 void autorun_globals_free(void) {
 	if (autorun_globals) {
 		if (autorun_globals->filedef_commands) {
@@ -97,13 +105,15 @@ void autorun_globals_free(void) {
 	}
 }
 
+/* helper function to process .config/geany/filedefs/
+ * to load any [autorun] handlers */
 void load_filedefs(void) {
-	// if there are any filetypes.FILE autorun sections
+	// load the config dir
 	gchar* filedef_path = g_build_path(G_DIR_SEPARATOR_S, autorun_globals->data->app->configdir, GEANY_FILEDEFS_SUBDIR, NULL);
 	guint filedef_len;
 	GSList* file_list = utils_get_file_list(filedef_path, &filedef_len, NULL);
+	// find any filetypes.FILE
 	if (filedef_len > 0) {
-		// stash filetypes.FILE to fallback on-project-close
 		GSList* node = NULL;
 		foreach_slist(node, file_list) {
 			if (g_str_has_prefix(node->data, "filetypes.") && g_strcmp0(node->data, "filetypes.README") != 0) {
@@ -124,7 +134,7 @@ void load_filedefs(void) {
 							parse_intercept_actions(*handler_key, config, cmd);
 
 							if (!cmd->invalid) {
-								// add the command
+								// add the command backwards
 								autorun_globals->filedef_commands = g_slist_prepend(autorun_globals->filedef_commands, cmd);
 							} else {
 								// free the command
@@ -132,7 +142,7 @@ void load_filedefs(void) {
 							}
 						}
 					}
-					// flip it around
+					// flip the GSList around
 					autorun_globals->filedef_commands = g_slist_reverse(autorun_globals->filedef_commands);
 				} else {
 					g_free(gerr);
@@ -150,6 +160,8 @@ void load_filedefs(void) {
 	g_free(filedef_path);
 }
 
+/* helper function to process Project .geany files
+ * to load any [autorun] handlers */
 void load_projectdefs(GKeyFile* config) {
 	gsize key_len;
 	GError* gerr = NULL;
@@ -164,7 +176,7 @@ void load_projectdefs(GKeyFile* config) {
 				AUTORUN_CMD* cmd = autorun_cmd_new();
 				parse_intercept_actions(*handler_key, config, cmd);
 				if (!cmd->invalid) {
-					// add the command
+					// add the command backwards
 					autorun_globals->project_commands = g_slist_prepend(autorun_globals->project_commands, cmd);
 				} else {
 					// free the command
@@ -172,7 +184,7 @@ void load_projectdefs(GKeyFile* config) {
 				}
 			}
 		}
-		// flip it around
+		// flip the GSList around
 		autorun_globals->project_commands = g_slist_reverse(autorun_globals->project_commands);
 	} else {
 		g_free(gerr);
