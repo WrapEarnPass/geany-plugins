@@ -183,12 +183,12 @@ static void stdioend_cb(GPid pid, gint wait_status, gpointer user_data) {
 	g_string_free(exit_data->stdout, TRUE);
 	parse_output(exit_data->stderr->str);
 	g_string_free(exit_data->stderr, TRUE);
-	g_free(exit_data);
 	if (--autorun_globals->children < 1) {
 		ui_progress_bar_stop();
 		ui_set_statusbar(FALSE, _("Auto-run finished %s"), exit_data->doc->file_name);
 		autorun_globals->children = 0;
 	}
+	g_free(exit_data);
 }
 
 // prefer running commands async, so the editor plays nice
