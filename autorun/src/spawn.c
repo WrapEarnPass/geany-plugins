@@ -115,11 +115,15 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			gchar* target_name = g_path_get_basename(target_file);
 
 			GString* command_str = g_string_new(cmd->command);
+			// escape to defend against shell interpolation, if possible
+			gchar* target_name_quote =g_shell_quote(target_name);
 			// replace %f
-			g_string_replace(command_str, "%f", target_name, 0);
-			// replace %a
-			g_string_replace(command_str, "%a", target_file, 0);
+			g_string_replace(command_str, "%f", target_name_quote, 0);
+			g_free(target_name_quote);
 
+			// replace %a
+			g_string_replace(command_str, "%a", target_file, 0);\
+			
 			GString* working_dir_str = g_string_new(cmd->working_dir);
 			// replace %d
 			g_string_replace(command_str, "%d", target_dir, 0);
@@ -128,7 +132,7 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			// replace %p
 			g_string_replace(command_str, "%p", target_projdir, 0);
 			g_string_replace(working_dir_str, "%p", target_projdir, 0);
-
+ 
 			if (success) {
 				success = spawn_check_command(command_str->str, TRUE, NULL);
 			}
