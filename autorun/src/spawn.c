@@ -111,22 +111,30 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 				target_file = utils_get_locale_from_utf8(doc->file_name);
 			}
 
-			// do the replacement bits
+			// prep for escape and replace
 			gchar* target_name = g_path_get_basename(target_file);
 
+			// OS specific escape handling.
+			gchar* escaped_name = escape_filename(target_name);
+			g_free(target_name);
+			gchar* escaped_file = escape_filename(target_file);
+			gchar* escaped_dir = escape_filename(target_dir);
+			gchar* escaped_projdir = escape_filename(target_projdir);
+
+			// do the replacement bits
 			GString* command_str = g_string_new(cmd->command);
 			// replace %f
-			g_string_replace(command_str, "%f", target_name, 0);
+			g_string_replace(command_str, "%f", escaped_name, 0);
 			// replace %a
-			g_string_replace(command_str, "%a", target_file, 0);
+			g_string_replace(command_str, "%a", escaped_file, 0);
 
 			GString* working_dir_str = g_string_new(cmd->working_dir);
 			// replace %d
-			g_string_replace(command_str, "%d", target_dir, 0);
+			g_string_replace(command_str, "%d", escaped_dir, 0);
 			g_string_replace(working_dir_str, "%d", target_dir, 0);
 
 			// replace %p
-			g_string_replace(command_str, "%p", target_projdir, 0);
+			g_string_replace(command_str, "%p", escaped_projdir, 0);
 			g_string_replace(working_dir_str, "%p", target_projdir, 0);
 
 			if (success) {
@@ -151,11 +159,14 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			}
 			// cleanup
 			g_free(target_dir);
+			g_free(escaped_dir);
 			g_free(target_projdir);
+			g_free(escaped_projdir);
 			if (tmpfile) {
 				g_object_unref(tmpfile);
 			}
 			g_free(target_file);
+			g_free(escaped_file);
 		}
 		// cleanup
 		// autorun_cmd_list_free(command_list);

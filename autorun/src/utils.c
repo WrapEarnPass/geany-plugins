@@ -160,3 +160,36 @@ void parse_output(gchar* input) {
 		g_free(output);
 	}
 }
+/* attempt to escape a filename or directory so it is safe inside of
+ * a platform specific quote
+ * the caller owns the returned string */
+gchar* escape_filename(gchar* filename) {
+	GString* filename_str = g_string_new(filename);
+#ifdef G_OS_WIN32
+	/*the goal is that the output from this function should work inside of a
+	double-quoted execve argument.
+	 * From https://www.robvanderwoude.com/escapechars.php*/
+	// % 	%%
+	g_string_replace(filename_str, "%", "%%", 0);
+	// ^ 	^^ 	May not always be required in doublequoted strings, but it won't hurt
+	g_string_replace(filename_str, "^", "^^", 0);
+	// & 	^&
+	g_string_replace(filename_str, "&", "^&", 0);
+	// < 	^<
+	g_string_replace(filename_str, "<", "^<", 0);
+	// > 	^>
+	g_string_replace(filename_str, ">", "^>", 0);
+	// | 	^|
+	g_string_replace(filename_str, "|", "^|", 0);
+#else
+	/*the goal is that the output from this function should work inside of a
+	single quoted execve argument.
+	File: `'~!@#$%^&*()_-+={}[] \ |:;"<>?,.c (created through GUI)
+	ls suggested
+	'`'\''~!@#$%^&*()_-+={}[] \ |:;"<>?,.c'
+	*/
+	// '	'\''
+	g_string_replace(filename_str, "'", "'\\''", 0);
+#endif
+	return g_string_free_and_steal(filename_str);
+}

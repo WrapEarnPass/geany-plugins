@@ -24,5 +24,6 @@
 
 void parse_intercept_actions(gchar* key, GKeyFile* key_file, AUTORUN_CMD* cmd);
 void parse_output(gchar* output);
+gchar* escape_filename(gchar* filename);
 
 #endif
