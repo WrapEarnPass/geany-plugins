@@ -25,8 +25,8 @@
 
 // container for spawn_with_callbacks IO
 typedef struct {
-	GString* stdout;
-	GString* stderr;
+	GString* stdout_str;
+	GString* stderr_str;
 	GeanyDocument* doc;
 
 } AUTORUN_ASYNC_DATA;
@@ -62,7 +62,7 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			command_order[cmd->order] = elem;
 		}
 
-		for (uint i = 0; i < g_slist_length(command_list); i++) {
+		for (guint i = 0; i < g_slist_length(command_list); i++) {
 			if (!command_order[i]) {
 				break; // stop on the first null;
 			}
@@ -193,10 +193,10 @@ static void stdioend_cb(G_GNUC_UNUSED GPid pid, G_GNUC_UNUSED gint wait_status, 
 	// spawn_with_callbacks runs this last and closes the child
 	AUTORUN_ASYNC_DATA* exit_data = (AUTORUN_ASYNC_DATA*)user_data;
 	// our stdout/stderr is complete. Display it.
-	parse_output(exit_data->stdout->str);
-	g_string_free(exit_data->stdout, TRUE);
-	parse_output(exit_data->stderr->str);
-	g_string_free(exit_data->stderr, TRUE);
+	parse_output(exit_data->stdout_str->str);
+	g_string_free(exit_data->stdout_str, TRUE);
+	parse_output(exit_data->stderr_str->str);
+	g_string_free(exit_data->stderr_str, TRUE);
 	// if all the children have stopped
 	if (--autorun_globals->children < 1) {
 		// flip the ui_progress_bar back
@@ -228,8 +228,8 @@ void dispatch_run_async(GeanyDocument* doc) {
 		GString* stdout_data = g_string_new(NULL);
 		GString* stderr_data = g_string_new(NULL);
 		AUTORUN_ASYNC_DATA* end_data = g_new0(AUTORUN_ASYNC_DATA, 1);
-		end_data->stdout = stdout_data;
-		end_data->stderr = stderr_data;
+		end_data->stdout_str = stdout_data;
+		end_data->stderr_str = stderr_data;
 		end_data->doc = doc;
 		GPid* child_pid = NULL;
 		gboolean success = FALSE;
