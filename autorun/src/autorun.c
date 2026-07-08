@@ -155,8 +155,7 @@ void load_filedefs(void) {
 	}
 
 	// cleanup
-	g_slist_foreach(file_list, (GFunc)g_free, NULL);
-	g_slist_free(file_list);
+	g_slist_free_full(file_list, (GDestroyNotify)g_free);
 	g_free(filedef_path);
 }
 
