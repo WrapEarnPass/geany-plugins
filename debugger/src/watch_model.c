@@ -206,7 +206,7 @@ inline static GList *lookup_variable(GList *vars, gchar *name)
  */
 void free_variables_list(GList *vars)
 {
-	g_list_free_full(vars, variable_free);
+	g_list_free_full(vars, (GDestroyNotify) variable_free);
 }
 
 /*

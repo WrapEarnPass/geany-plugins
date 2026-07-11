@@ -588,7 +588,7 @@ static gboolean on_key_pressed(GtkWidget *widget, GdkEvent *event, gpointer user
 	}
 
 	/* free rows list */
-	g_list_free(rows, gtk_tree_path_free);
+	g_list_free_full(rows, (GDestroyNotify) gtk_tree_path_free);
 
 	return FALSE;
 }

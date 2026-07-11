@@ -274,7 +274,7 @@ static void free_commands_queue(GList *queue)
 {
 	/* all commands completed */
 	queue = g_list_first(queue);
-	g_list_free_full(queue, free_queue_item);
+	g_list_free_full(queue, (GDestroyNotify) free_queue_item);
 }
 
 /*
@@ -1263,7 +1263,7 @@ static void update_files(void)
 	if (files)
 	{
 		/* free previous list */
-		g_list_free_full(files,g_free);
+		g_list_free_full(files, g_free);
 		files = NULL;
 	}
 
@@ -1373,7 +1373,7 @@ static void update_autos(void)
 		exec_sync_command(command, TRUE, NULL);
 	}
 
-	g_list_free_full(autos, variable_free);
+	g_list_free_full(autos, (GDestroyNotify) variable_free);
 	autos = NULL;
 
 	/* add current autos to the list */

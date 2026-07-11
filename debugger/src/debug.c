@@ -496,7 +496,7 @@ static gboolean on_watch_key_pressed_callback(GtkWidget *widget, GdkEvent  *even
 		gtk_tree_path_free(path_to_select);	
 
 		/* free references list */
-		g_list_free_full(references, gtk_tree_row_reference_free);
+		g_list_free_full(references, (GDestroyNotify) gtk_tree_row_reference_free);
 
 		config_set_debug_changed();
 	}
@@ -504,7 +504,7 @@ static gboolean on_watch_key_pressed_callback(GtkWidget *widget, GdkEvent  *even
 	gtk_tree_path_free(empty_path);
 
 	/* free rows list */
-	g_list_free_full(rows, (GDestroyNotify)gtk_tree_path_free);
+	g_list_free_full(rows, (GDestroyNotify) gtk_tree_path_free);
 
 	return FALSE;
 }
@@ -638,7 +638,7 @@ static void on_debugger_run (void)
 	if (stack)
 	{
 		remove_stack_markers();
-		g_list_free_full(stack, frame_unref);
+		g_list_free_full(stack, (GDestroyNotify) frame_unref);
 		stack = NULL;
 
 		stree_remove_frames();
@@ -792,7 +792,7 @@ static void on_debugger_exited (int code)
 	if (stack)
 	{
 		remove_stack_markers();
-		g_list_free_full(stack, frame_unref);
+		g_list_free_full(stack, (GDestroyNotify) frame_unref);
 		stack = NULL;
 	}
 	
@@ -971,7 +971,7 @@ static void on_select_thread(int thread_id)
 
 	if ((success = active_module->set_active_thread(thread_id)))
 	{
-		g_list_free_full(stack, (GDestroyNotify)frame_unref);
+		g_list_free_full(stack, (GDestroyNotify) frame_unref);
 		stack = active_module->get_stack();
 
 		/* update the stack tree */
@@ -1118,7 +1118,7 @@ void debug_destroy(void)
 	if (stack)
 	{
 		remove_stack_markers();
-		g_list_free_full(stack, frame_unref);
+		g_list_free_full(stack, (GDestroyNotify) frame_unref);
 		stack = NULL;
 	}
 	
@@ -1402,7 +1402,7 @@ gchar* debug_get_calltip_for_expression(gchar* expression)
 					{
 						g_string_append(calltip_str, "\n\t\t........");
 					}
-					g_list_free_full(children, variable_free);
+					g_list_free_full(children, (GDestroyNotify) variable_free);
 				}
 				calltip = g_string_free(calltip_str, FALSE);
 			}

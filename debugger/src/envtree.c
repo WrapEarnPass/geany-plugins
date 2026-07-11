@@ -166,7 +166,7 @@ static void delete_selected_rows(void)
 		gtk_tree_path_free(path);
 
 		/* free references list */
-		g_list_free_full(references, gtk_tree_row_reference_free);
+		g_list_free_full(references, (GDestroyNotify) gtk_tree_row_reference_free);
 	}
 	
 	/* free selection reference */
@@ -175,7 +175,7 @@ static void delete_selected_rows(void)
 	gtk_tree_path_free(empty_path);
 
 	/* free rows list */
-	g_list_free_full(rows, gtk_tree_path_free);
+	g_list_free_full(rows, (GDestroyNotify)  gtk_tree_path_free);
 }
 
 /*
