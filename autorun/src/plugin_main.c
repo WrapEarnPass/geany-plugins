@@ -51,13 +51,15 @@ static void on_project_close(G_GNUC_UNUSED GObject* obj, G_GNUC_UNUSED gpointer 
 static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
 	// make sure we update the projectdefs if the config is dirty
 	if (autorun_globals->dirtybit) {
-		// reload the projectdefs
-		GKeyFile* config = g_key_file_new();
-		gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
-		if (ret) {
-			load_projectdefs(config);
+		if(autorun_globals->data->app->project && autorun_globals->data->app->project->file_name ){
+			// reload the projectdefs
+			GKeyFile* config = g_key_file_new();
+					gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+			if (ret) {
+				load_projectdefs(config);
+			}
+			g_key_file_free(config);
 		}
-		g_key_file_free(config);
 		autorun_globals->dirtybit = FALSE;
 	}
 
@@ -78,13 +80,15 @@ static void on_doc_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_U
 static void on_doc_before_save(G_GNUC_UNUSED GObject* obj, GeanyDocument* doc, G_GNUC_UNUSED gpointer user_data) {
 	// make sure we update the projectdefs if the config is dirty
 	if (autorun_globals->dirtybit) {
-		// reload the projectdefs
-		GKeyFile* config = g_key_file_new();
-		gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
-		if (ret) {
-			load_projectdefs(config);
+		if(autorun_globals->data->app->project && autorun_globals->data->app->project->file_name ){
+			// reload the projectdefs
+			GKeyFile* config = g_key_file_new();
+			gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+			if (ret) {
+				load_projectdefs(config);
+			}
+			g_key_file_free(config);
 		}
-		g_key_file_free(config);
 		autorun_globals->dirtybit = FALSE;
 	}
 
@@ -143,7 +147,7 @@ static gboolean autorun_init(GeanyPlugin* plugin, G_GNUC_UNUSED gpointer pdata) 
 		autorun_globals_init(plugin);
 		load_filedefs();
 
-		if (autorun_globals->data->app->project) {
+		if (autorun_globals->data->app->project && autorun_globals->data->app->project->file_name) {
 			// if initialized while a project is already open, manually ingest the project
 			GKeyFile* config = g_key_file_new();
 			gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);

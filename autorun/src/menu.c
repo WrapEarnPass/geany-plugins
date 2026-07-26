@@ -40,13 +40,15 @@ static void autorun_menu_reload_cb(G_GNUC_UNUSED GtkMenuItem* menuitem, G_GNUC_U
 	// load filedefs
 	load_filedefs();
 	// load project
-	GKeyFile* config = g_key_file_new();
-	gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
-	if (ret) {
-		msgwin_status_add(_("Reloading Auto-run project configs"));
-		load_projectdefs(config);
+	if(autorun_globals->data->app->project && autorun_globals->data->app->project->file_name){
+		GKeyFile* config = g_key_file_new();
+		gboolean ret = g_key_file_load_from_file(config, autorun_globals->data->app->project->file_name, G_KEY_FILE_NONE, NULL);
+		if (ret) {
+			msgwin_status_add(_("Reloading Auto-run project configs"));
+			load_projectdefs(config);
+		}
+		g_key_file_free(config);
 	}
-	g_key_file_free(config);
 }
 
 /* initialize the Auto-run Tool menu */
