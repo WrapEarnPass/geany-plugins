@@ -648,6 +648,8 @@ release_resources (ScintillaObject *sci)
     
     for (j = 0; j < MARKER_COUNT; j++) {
       if (G_markers[j].num >= 0) {
+        scintilla_send_message (sci, SCI_MARKERDELETEALL,
+                                G_markers[j].num, 0);
         scintilla_send_message (sci, SCI_MARKERDEFINE,
                                 G_markers[j].num, SC_MARK_AVAILABLE);
       }
