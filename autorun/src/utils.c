@@ -118,7 +118,7 @@ void parse_output(gchar* input) {
 	// make sure we're using utf8
 	gchar* output = encodings_convert_to_utf8(input, -1, NULL);
 	// split the output on \n
-	gchar** lines = g_regex_split_simple("\\n", output, 0, G_REGEX_MATCH_NEWLINE_ANY);
+	gchar** lines = g_regex_split_simple("\R", output, 0, G_REGEX_MATCH_NEWLINE_ANYCRLF);
 	gchar** line = NULL;
 
 	// foreach line, if it contains a filename, it is red.
