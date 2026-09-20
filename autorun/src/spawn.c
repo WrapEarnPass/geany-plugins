@@ -96,10 +96,11 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 					// dont need the iostream, but gtk wont make a temp without it.
 					g_io_stream_close((GIOStream*)iostream, NULL, NULL);
 					target_file = g_file_get_path(tmpfile);
-					// remove the trailing \0 on write
 					gint con_len = sci_get_length(doc->editor->sci);
-					before_contents = sci_get_contents(doc->editor->sci, con_len);
-					success = g_file_set_contents_full(target_file, before_contents, con_len - 1, G_FILE_SET_CONTENTS_CONSISTENT, 0660, NULL);
+					// need a trailing \0 in the gchar.
+					before_contents = sci_get_contents(doc->editor->sci, con_len + 1);
+					// remove the trailing \0 in the file.
+					success = g_file_set_contents_full(target_file, before_contents, con_len, G_FILE_SET_CONTENTS_CONSISTENT, 0660, NULL);
 					g_free(before_contents);
 
 				} else {
@@ -169,7 +170,6 @@ static void parse_command(const gchar* interceptor, GeanyDocument* doc, GSList**
 			g_free(escaped_file);
 		}
 		// cleanup
-		// autorun_cmd_list_free(command_list);
 		// we dont own the contents of command_list.
 		g_slist_free(command_list);
 	}
@@ -279,8 +279,8 @@ void dispatch_run_sync(GeanyDocument* doc) {
 		GString* stdout_data = g_string_new(NULL);
 		GString* stderr_data = g_string_new(NULL);
 		SpawnWriteData* stdin_data;
-
-		gint con_len = sci_get_length(doc->editor->sci);
+		// con_len is used for gchar* here, so add the \0
+		gint con_len = sci_get_length(doc->editor->sci) + 1;
 		gchar* before_contents = sci_get_contents(doc->editor->sci, con_len);
 		if (!has_tmpfile) {
 			// need to send stdin.
